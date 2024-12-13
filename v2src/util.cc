@@ -9,13 +9,13 @@
 namespace AOTRITON_NS {
 
 struct LazyArch {
-  LazyArch(hipDevice_t dev)
+  LazyArch(cudaDevice_t dev)
     : dev_(dev) {
   }
   operator GpuArch() {
-    hipDeviceProp_t prop;
-    hipError_t err = hipGetDeviceProperties(&prop, dev_);
-    if (err != hipSuccess)
+    cudaDeviceProp_t prop;
+    cudaError_t err = cudaGetDeviceProperties(&prop, dev_);
+    if (err != cudaSuccess)
       return GPU_ARCH_UNKNOWN;
     std::string_view arch(prop.gcnArchName);
     const auto colon = arch.find(':');
@@ -29,7 +29,7 @@ struct LazyArch {
   }
 
 private:
-  hipDevice_t dev_;
+  cudaDevice_t dev_;
   static std::unordered_map<std::string, GpuArch> string_to_arch;
 };
 
@@ -41,11 +41,11 @@ std::unordered_map<std::string, GpuArch> LazyArch::string_to_arch = {
 };
 
 GpuArch
-getArchFromStream(hipStream_t stream) {
-  static std::unordered_map<hipDevice_t, GpuArch> device_to_arch;
-  hipDevice_t dev;
-  hipError_t err = hipStreamGetDevice(stream, &dev);
-  if (err != hipSuccess)
+getArchFromStream(cudaStream_t stream) {
+  static std::unordered_map<cudaDevice_t, GpuArch> device_to_arch;
+  cudaDevice_t dev;
+  cudaError_t err = cudaStreamGetDevice(stream, &dev);
+  if (err != cudaSuccess)
     return GPU_ARCH_UNKNOWN;
   LazyArch lazy(dev);
   device_to_arch.try_emplace(dev, lazy);

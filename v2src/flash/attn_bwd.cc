@@ -13,9 +13,9 @@
 
 namespace AOTRITON_NS::v2::flash {
 
-hipError_t
+cudaError_t
 bwd_preprocess(T4 out, T4 dout, T2 delta, AOTRITON_NS::Stream stream_wrap) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const BwdPreprocessParams& params) -> dim3 {
@@ -45,21 +45,21 @@ bwd_preprocess(T4 out, T4 dout, T2 delta, AOTRITON_NS::Stream stream_wrap) {
   BwdPreprocessContext context;
   context.grid_calculator = grid_calculator;
   err = context.lookup_optimal(params, arch);
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);
   return err;
 }
 
-hipError_t
+cudaError_t
 bwd_preprocess_varlen(T4 out,
                       T4 dout,
                       T2 delta,
                       T1 cu_seqlens_q,
                       int32_t max_seqlen_q,
                       AOTRITON_NS::Stream stream_wrap) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const BwdPreprocessVarlenParams& params) -> dim3 {
@@ -90,14 +90,14 @@ bwd_preprocess_varlen(T4 out,
   BwdPreprocessVarlenContext context;
   context.grid_calculator = grid_calculator;
   err = context.lookup_optimal(params, arch);
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);
   return err;
 }
 
-hipError_t
+cudaError_t
 bwd_kernel_dk_dv(T4 q,
                  T4 k,
                  T4 v,
@@ -121,7 +121,7 @@ bwd_kernel_dk_dv(T4 q,
                  bool is_causal,
                  AOTRITON_NS::Stream stream_wrap,
                  BwdExtraArguments* extargs) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [max_seqlen_k](const BwdKernelDkDvParams& params) -> dim3 {
@@ -177,7 +177,7 @@ bwd_kernel_dk_dv(T4 q,
     params._has_preferred_kernel = extargs->dkdv.force_kernel_index;
     if (params._has_preferred_kernel == CppTuneSpecialKernelIndex::kSkipGPUCall) {
         // std::cerr << "extargs->dkdv.force_kernel_index = " << extargs->dkdv.force_kernel_index << " EKI" << std::endl;
-        return hipSuccess;
+        return cudaSuccess;
     }
   }
 #endif
@@ -191,14 +191,14 @@ bwd_kernel_dk_dv(T4 q,
     extargs->dkdv.selected_kernel_copts = params._preferred_kernel_copts;
   }
 #endif
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);
   return err;
 }
 
-hipError_t
+cudaError_t
 bwd_kernel_dq(T4 q,
               T4 k,
               T4 v,
@@ -222,7 +222,7 @@ bwd_kernel_dq(T4 q,
               bool is_causal,
               AOTRITON_NS::Stream stream_wrap,
               BwdExtraArguments* extargs) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [num_seqlens, max_seqlen_q](const BwdKernelDqParams& params) -> dim3 {
@@ -278,7 +278,7 @@ bwd_kernel_dq(T4 q,
     params._has_preferred_kernel = extargs->dqdb.force_kernel_index;
     if (params._has_preferred_kernel == CppTuneSpecialKernelIndex::kSkipGPUCall) {
         // std::cerr << "extargs->dqdb.force_kernel_index = " << extargs->dqdb.force_kernel_index << " EKI" << std::endl;
-        return hipSuccess;
+        return cudaSuccess;
     }
   }
 #endif
@@ -293,14 +293,14 @@ bwd_kernel_dq(T4 q,
     // std::cerr << "dqdb lookup_optimal = " << err << " EOL" << std::endl;
   }
 #endif
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);
   return err;
 }
 
-hipError_t
+cudaError_t
 _attn_bwd_common(T4 q,
                  T4 k,
                  T4 v,
@@ -326,12 +326,12 @@ _attn_bwd_common(T4 q,
                  bool is_causal,
                  AOTRITON_NS::Stream stream,
                  BwdExtraArguments* extargs) {
-  hipError_t ret;
+  cudaError_t ret;
   if (num_seqlens == 0)
     ret = bwd_preprocess(out, dout, delta, stream);
   else
     ret = bwd_preprocess_varlen(out, dout, delta, cu_seqlens_q, max_seqlen_q, stream);
-  if (ret != hipSuccess)
+  if (ret != cudaSuccess)
     return ret;
   ret = bwd_kernel_dk_dv(q,
                          k,
@@ -357,7 +357,7 @@ _attn_bwd_common(T4 q,
                          stream,
                          extargs);
 
-  if (ret != hipSuccess)
+  if (ret != cudaSuccess)
     return ret;
   ret = bwd_kernel_dq(q,
                       k,
@@ -385,7 +385,7 @@ _attn_bwd_common(T4 q,
   return ret;
 }
 
-hipError_t
+cudaError_t
 attn_bwd(T4 q,
          T4 k,
          T4 v,
@@ -434,7 +434,7 @@ attn_bwd(T4 q,
                           extargs);
 }
 
-hipError_t
+cudaError_t
 attn_bwd_compact_varlen(T4 q,            // 1 x num_heads x total_q x head_size, total_q := \sum_{i=0}^{b}
                         T4 k,            // 1 x num_heads x total_k x head_size, total_k := \sum_{i=0}^{b}
                         T4 v,            // 1 x num_heads x total_v x head_size, total_, := \sum_{i=0}^{b}

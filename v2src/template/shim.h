@@ -36,8 +36,8 @@ class [[context_class_name]] {
 public:
     std::function<dim3(const [[param_class_name]]&)> grid_calculator;
 
-    hipError_t lookup_optimal([[param_class_name]]& params, GpuArch arch);
-    hipError_t launch(const [[param_class_name]]& params, hipStream_t stream);
+    cudaError_t lookup_optimal([[param_class_name]]& params, GpuArch arch);
+    cudaError_t launch(const [[param_class_name]]& params, cudaStream_t stream);
     static int64_t get_arch_number(GpuArch arch);
 
 private:

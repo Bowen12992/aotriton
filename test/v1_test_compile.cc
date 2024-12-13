@@ -1,7 +1,7 @@
 // Copyright © 2023-2024 Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: MIT
 
-#include <hip/hip_runtime.h>
+#include <cuda/cuda_runtime.h>
 #include "attn_fwd.h"
 
 int main()

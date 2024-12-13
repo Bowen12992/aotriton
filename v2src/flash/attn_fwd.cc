@@ -16,7 +16,7 @@
 
 namespace AOTRITON_NS::v2::flash {
 
-hipError_t
+cudaError_t
 _attn_fwd_common(T4 q,
                  T4 k,
                  T4 v,
@@ -39,7 +39,7 @@ _attn_fwd_common(T4 q,
                  bool is_causal,
                  AOTRITON_NS::Stream stream_wrap,
                  FwdExtraArguments* extargs) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const AttnFwdParams& params) -> dim3 {
@@ -101,7 +101,7 @@ _attn_fwd_common(T4 q,
   if (extargs) {
     params._has_preferred_kernel = extargs->force_kernel_index;
     if (params._has_preferred_kernel == CppTuneSpecialKernelIndex::kSkipGPUCall)
-        return hipSuccess;
+        return cudaSuccess;
   }
 #endif
   AttnFwdContext context;
@@ -115,14 +115,14 @@ _attn_fwd_common(T4 q,
     extargs->selected_kernel_copts = params._preferred_kernel_copts;
   }
 #endif
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);
   return err;
 }
 
-hipError_t
+cudaError_t
 attn_fwd(T4 q,
          T4 k,
          T4 v,
@@ -165,7 +165,7 @@ attn_fwd(T4 q,
                           extargs);
 }
 
-hipError_t
+cudaError_t
 attn_fwd_compact_varlen(T4 q,            // 1 x num_heads x total_q x head_size, total_q := \sum_{i=0}^{b} s_i
                         T4 k,            // 1 x num_heads x total_k x head_size, total_k := \sum_{i=0}^{b} s_i
                         T4 v,            // 1 x num_heads x total_v x head_size, total_, := \sum_{i=0}^{b} s_i

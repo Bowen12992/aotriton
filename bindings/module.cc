@@ -197,7 +197,7 @@ namespace pyaotriton {
 #undef EV
   }
 
-  void def_hipruntime(py::module_& m);
+  void def_cudaruntime(py::module_& m);
 
   template<int Rank>
   void def_tensorview(py::module_& m, const std::string& name) {
@@ -215,7 +215,7 @@ namespace pyaotriton {
     m.doc() = "AOTriton Python binding";
     def_stream(m);
     def_dtype(m);
-    def_hipruntime(m);
+    def_cudaruntime(m);
     def_tensorview<4>(m, "T4");
     def_tensorview<2>(m, "T2");
     def_tensorview<1>(m, "T1");

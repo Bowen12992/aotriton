@@ -83,7 +83,7 @@ PackedKernel::open(const char* package_path) {
   auto ret = std::make_shared<PackedKernel>(aks2fd);
   close(aks2fd);
   close(dirfd);
-  if (ret->status() == hipSuccess) {
+  if (ret->status() == cudaSuccess) {
     registry_.emplace(path_view, ret);
     return ret;
   }
@@ -128,7 +128,7 @@ PackedKernel::PackedKernel(int fd) {
   AKS2_Header header;
   auto header_read = ::read(fd, &header, sizeof(AKS2_Header));
   if (header_read == sizeof(AKS2_MAGIC) && std::string_view(header.magic, 4) != AKS2_MAGIC) {
-    final_status_ = hipErrorInvalidSource; // Broken at XZ level
+    final_status_ = cudaErrorInvalidSource; // Broken at XZ level
     return;
   }
   decompressed_content_.resize(header.uncompressed_size);
@@ -140,7 +140,7 @@ PackedKernel::PackedKernel(int fd) {
 #if AOTRITON_KERNEL_VERBOSE
     std::cerr << " lzma_stream_decoder error: " << ret << std::endl;
 #endif
-    final_status_ = hipErrorInvalidSource; // Broken at XZ level
+    final_status_ = cudaErrorInvalidSource; // Broken at XZ level
     return;
   }
   uint8_t inbuf[AOTRITON_LZMA_BUFSIZ];
@@ -163,7 +163,7 @@ PackedKernel::PackedKernel(int fd) {
     if (ret != LZMA_OK && ret != LZMA_STREAM_END) {
       decompressed_content_.clear();
       directory_.clear();
-      final_status_ = hipErrorIllegalState; // Content not fully decompressed
+      final_status_ = cudaErrorIllegalState; // Content not fully decompressed
       return;
     }
   }
@@ -189,13 +189,13 @@ PackedKernel::PackedKernel(int fd) {
     decompressed_content_.clear();
     directory_.clear();
     // Directory size not matching
-    final_status_ = hipErrorIllegalAddress;
+    final_status_ = cudaErrorIllegalAddress;
     return;
   }
 #if AOTRITON_KERNEL_VERBOSE
   std::cerr << "PackedKernel.kernel_start_ sanity check passed" << std::endl;
 #endif
-  final_status_ = hipSuccess;
+  final_status_ = cudaSuccess;
 }
 
 PackedKernel::~PackedKernel() {
@@ -203,7 +203,7 @@ PackedKernel::~PackedKernel() {
 
 TritonKernel::Essentials
 PackedKernel::filter(const char* stem_name) const {
-  if (status() != hipSuccess) {
+  if (status() != cudaSuccess) {
     return std::make_tuple(nullptr, 0, dim3 { 0, 0, 0 });
   }
   std::string_view filename(stem_name);

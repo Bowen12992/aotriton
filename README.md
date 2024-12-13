@@ -17,7 +17,7 @@ system, `ninja install` will run the whole build process unconditionally.
 
 ### Prerequisites
 
-* `hipcc` in `/opt/rocm/bin`, as a part of [ROCm](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)
+* `nvcc` in `/usr/local/cuda/bin/nvcc`
 * `cmake`
 * `ninja`
 * `liblzma`

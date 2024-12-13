@@ -16,16 +16,16 @@
 #define STRINGIFICATION(s) STRINGIFICATION_I(s)
 #define STRINGIFICATION_I(s) #s
 
-#define AOTRITON_HIP_CHECK_RETURN(expr)                                                                      \
+#define AOTRITON_CUDA_CHECK_RETURN(expr)                                                                      \
   do {                                                                                                       \
     auto r = (expr);                                                                                         \
-    if (r != hipSuccess)                                                                                     \
+    if (r != cudaSuccess)                                                                                     \
       throw std::runtime_error("FAILURE at Line " STRINGIFICATION(__LINE__));                                \
   } while (0)
 
 namespace AOTRITON_NS {
 
-TritonKernel::DeviceFunction::DeviceFunction(int device_id_, hipModule_t mod_, hipFunction_t func_)
+TritonKernel::DeviceFunction::DeviceFunction(int device_id_, cudaModule_t mod_, cudaFunction_t func_)
   : device_id(device_id_)
   , mod(mod_)
   , func(func_) {
@@ -33,7 +33,7 @@ TritonKernel::DeviceFunction::DeviceFunction(int device_id_, hipModule_t mod_, h
 
 TritonKernel::DeviceFunction::~DeviceFunction() {
   if (mod != nullptr) {
-    (void)hipModuleUnload(mod);
+    (void)cudaModuleUnload(mod);
   }
 }
 
@@ -42,16 +42,16 @@ TritonKernel::TritonKernel(const char* package_path, const char* stem_name)
   , stem_name_(stem_name) {
 }
 
-hipError_t
-TritonKernel::invoke(const char* kernel_name, dim3 grid, std::vector<void*>& args, hipStream_t stream) {
+cudaError_t
+TritonKernel::invoke(const char* kernel_name, dim3 grid, std::vector<void*>& args, cudaStream_t stream) {
 #if AOTRITON_KERNEL_VERBOSE
   std::cerr << "Invoking TritonKernel " << this << " with kernel_name = \"" << kernel_name << '"'
             << std::endl;
 #endif
   int device_id;
-  AOTRITON_HIP_CHECK_RETURN(hipGetDevice(&device_id));
+  AOTRITON_CUDA_CHECK_RETURN(cudaGetDevice(&device_id));
   // Use reader lock to peek the state
-  hipFunction_t func = nullptr;
+  cudaFunction_t func = nullptr;
   {
     std::shared_lock lock(funcache_mutex_);
     func = cfind_function(device_id);
@@ -63,24 +63,24 @@ TritonKernel::invoke(const char* kernel_name, dim3 grid, std::vector<void*>& arg
     // Check again, in case another waiter has initialized the device
     func = cfind_function(device_id);
     if (!func) {
-      hipError_t err;
+      cudaError_t err;
       std::tie(func, err) = load_for_device(device_id, kernel_name);
     }
   }
-  return hipModuleLaunchKernel(func,
-                               grid.x,
-                               grid.y,
-                               grid.z,
-                               block_.x,
-                               block_.y,
-                               block_.z,
-                               shared_memory_size_,
-                               stream,
-                               args.data(),
-                               0);
+  return cudaLaunchKernel(func,
+                          grid.x,
+                          grid.y,
+                          grid.z,
+                          block_.x,
+                          block_.y,
+                          block_.z,
+                          shared_memory_size_,
+                          stream,
+                          args.data(),
+                          0);
 }
 
-hipFunction_t
+cudaFunction_t
 TritonKernel::cfind_function(int device_id) const {
   auto iter = funcache_.find(device_id);
   if (iter == funcache_.end())
@@ -88,13 +88,13 @@ TritonKernel::cfind_function(int device_id) const {
   return iter->second.func;
 }
 
-std::tuple<hipFunction_t, hipError_t>
+std::tuple<cudaFunction_t, cudaError_t>
 TritonKernel::load_for_device(int device_id, const char* kernel_name) {
-  hipJitOption opt[] = { hipJitOptionErrorLogBufferSizeBytes,
-                         hipJitOptionErrorLogBuffer,
-                         hipJitOptionInfoLogBufferSizeBytes,
-                         hipJitOptionInfoLogBuffer,
-                         hipJitOptionLogVerbose };
+  cudaJitOption opt[] = { cudaJitOptionErrorLogBufferSizeBytes,
+                         cudaJitOptionErrorLogBuffer,
+                         cudaJitOptionInfoLogBufferSizeBytes,
+                         cudaJitOptionInfoLogBuffer,
+                         cudaJitOptionLogVerbose };
   const unsigned int errbufsize = 8192;
   const unsigned int logbufsize = 8192;
   std::vector<char> err(errbufsize, 0);
@@ -113,16 +113,16 @@ TritonKernel::load_for_device(int device_id, const char* kernel_name) {
   std::cerr << "Decompress kernel to " << kernel_image_ << std::endl;
 #endif
   if (!kernel_image_) {
-    return std::make_tuple(nullptr, hipErrorInvalidImage);
+    return std::make_tuple(nullptr, cudaErrorInvalidImage);
   }
-  hipModule_t mod;
-  hipFunction_t func;
-  AOTRITON_HIP_CHECK_RETURN(hipModuleLoadDataEx(&mod, kernel_image_, 5, opt, optval));
-  AOTRITON_HIP_CHECK_RETURN(hipModuleGetFunction(&func, mod, kernel_name));
+  cudaModule_t mod;
+  cudaFunction_t func;
+  AOTRITON_CUDA_CHECK_RETURN(cudaModuleLoadDataEx(&mod, kernel_image_, 5, opt, optval));
+  AOTRITON_CUDA_CHECK_RETURN(cudaModuleGetFunction(&func, mod, kernel_name));
   funcache_.emplace(std::piecewise_construct,
                     std::forward_as_tuple(device_id),
                     std::forward_as_tuple(device_id, mod, func));
-  return std::make_tuple(func, hipSuccess);
+  return std::make_tuple(func, cudaSuccess);
 }
 
 void

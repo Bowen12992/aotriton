@@ -154,7 +154,7 @@ extern template class TensorView<2>;
 extern template class TensorView<3>;
 extern template class TensorView<4>;
 
-GpuArch getArchFromStream(hipStream_t);
+GpuArch getArchFromStream(cudaStream_t);
 
 } // namespace AOTRITON_NS
 

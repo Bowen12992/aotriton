@@ -11,7 +11,7 @@
 
 namespace AOTRITON_NS::v2::flash {
 
-hipError_t
+cudaError_t
 check_gpu(AOTRITON_NS::Stream stream);
 
 using T4 = AOTRITON_NS::TensorView<4>;
@@ -28,7 +28,7 @@ struct BwdExtraArguments {
 #endif
 };
 
-hipError_t
+cudaError_t
 attn_fwd(T4 q, // batch_size x num_heads x seqlen_q x head_size
          T4 k, // batch_size x num_heads x seqlen_k x head_size
          T4 v, // batch_size x num_heads x seqlen_k x head_size
@@ -47,7 +47,7 @@ attn_fwd(T4 q, // batch_size x num_heads x seqlen_q x head_size
          AOTRITON_NS::Stream stream,
          FwdExtraArguments* extargs = nullptr);
 
-hipError_t
+cudaError_t
 attn_fwd_compact_varlen(T4 q, // 1 x num_heads x total_q x head_size, total_q := \sum_{i=0}^{b} s_i
                         T4 k, // 1 x num_heads x total_k x head_size, total_k := \sum_{i=0}^{b} s_i
                         T4 v, // 1 x num_heads x total_v x head_size, total_, := \sum_{i=0}^{b} s_i
@@ -70,7 +70,7 @@ attn_fwd_compact_varlen(T4 q, // 1 x num_heads x total_q x head_size, total_q :=
                         AOTRITON_NS::Stream stream,
                         FwdExtraArguments* extargs = nullptr);
 
-hipError_t
+cudaError_t
 attn_bwd(T4 q, // batch_size x num_heads x seqlen_q x head_size
          T4 k, // batch_size x num_heads x seqlen_k x head_size
          T4 v, // batch_size x num_heads x seqlen_k x head_size
@@ -92,7 +92,7 @@ attn_bwd(T4 q, // batch_size x num_heads x seqlen_q x head_size
          AOTRITON_NS::Stream stream,
          BwdExtraArguments* extargs = nullptr);
 
-hipError_t
+cudaError_t
 attn_bwd_compact_varlen(T4 q, // 1 x num_heads x total_q x head_size, total_q := \sum_{i=0}^{b}
                         T4 k, // 1 x num_heads x total_k x head_size, total_k := \sum_{i=0}^{b}
                         T4 v, // 1 x num_heads x total_v x head_size, total_, := \sum_{i=0}^{b}
@@ -118,13 +118,13 @@ attn_bwd_compact_varlen(T4 q, // 1 x num_heads x total_q x head_size, total_q :=
                         AOTRITON_NS::Stream stream,
                         BwdExtraArguments* extargs = nullptr);
 
-hipError_t
+cudaError_t
 debug_fill_dropout_rng(T4 r,
                        uint64_t philox_seed,
                        uint64_t philox_offset,
                        AOTRITON_NS::Stream stream);
 
-hipError_t
+cudaError_t
 debug_fill_dropout_rng_tensor(T4 r,
                               T0 philox_seed,
                               T0 philox_offset,

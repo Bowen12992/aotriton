@@ -24,7 +24,7 @@ public:
   static PackedKernelPtr open(const char* package_path);
   PackedKernel(int fd);
   ~PackedKernel();
-  hipError_t status() const {
+  cudaError_t status() const {
     return final_status_;
   }
 
@@ -36,7 +36,7 @@ private:
   // Note: do NOT drop the decompressed directory, its content is used by
   //       the unordered_map directory_
   std::vector<uint8_t> decompressed_content_;
-  hipError_t final_status_;
+  cudaError_t final_status_;
 
   const uint8_t* kernel_start_;
   // Note: again, AKS2_Metadata points to directory at decompressed_content_

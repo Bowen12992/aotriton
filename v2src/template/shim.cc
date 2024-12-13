@@ -14,24 +14,24 @@ int64_t [[param_class_name]]::godel_number() const
     return sum;
 }
 
-hipError_t
+cudaError_t
 [[context_class_name]]::lookup_optimal([[param_class_name]]& params, GpuArch arch) {
     int64_t arch_number = get_arch_number(arch);
     if (arch_number < 0) {
-        return hipErrorNoBinaryForGpu;
+        return cudaErrorNoBinaryForGpu;
     }
     params.selected_kernel = nullptr;
     auto tune_func = autotune_table[arch_number][params.godel_number()];
     tune_func(params);
     if (!params.selected_kernel)
-        return hipErrorSharedObjectSymbolNotFound;
-    return hipSuccess;
+        return cudaErrorSharedObjectSymbolNotFound;
+    return cudaSuccess;
 }
 
-hipError_t
-[[context_class_name]]::launch(const [[param_class_name]]& params, hipStream_t stream) {
+cudaError_t
+[[context_class_name]]::launch(const [[param_class_name]]& params, cudaStream_t stream) {
     auto arch = getArchFromStream(stream);
-    hipDeviceptr_t global_scratch = 0;
+    cudaDeviceptr_t global_scratch = 0;
     [[put_kernel_arguments_on_stack]];
     std::vector<void*> args = { [[let_kernel_arguments]],
                                 const_cast<void*>(static_cast<const void*>(&global_scratch)),

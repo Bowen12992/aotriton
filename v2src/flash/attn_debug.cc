@@ -10,9 +10,9 @@
 
 namespace AOTRITON_NS::v2::flash {
 
-hipError_t
+cudaError_t
 debug_fill_dropout_rng_tensor(T4 r, T0 philox_seed, T0 philox_offset, AOTRITON_NS::Stream stream_wrap) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const DebugFillDropoutRngTensorParams& params) -> dim3 {
@@ -36,16 +36,16 @@ debug_fill_dropout_rng_tensor(T4 r, T0 philox_seed, T0 philox_offset, AOTRITON_N
   DebugFillDropoutRngTensorContext context;
   context.grid_calculator = grid_calculator;
   err = context.lookup_optimal(params, arch);
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);
   return err;
 }
 
-hipError_t
+cudaError_t
 debug_fill_dropout_rng(T4 r, uint64_t philox_seed, uint64_t philox_offset, AOTRITON_NS::Stream stream_wrap) {
-  hipError_t err;
+  cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const DebugFillDropoutRngParams& params) -> dim3 {
@@ -69,7 +69,7 @@ debug_fill_dropout_rng(T4 r, uint64_t philox_seed, uint64_t philox_offset, AOTRI
   DebugFillDropoutRngContext context;
   context.grid_calculator = grid_calculator;
   err = context.lookup_optimal(params, arch);
-  if (err != hipSuccess) {
+  if (err != cudaSuccess) {
     return err;
   }
   err = context.launch(params, stream);

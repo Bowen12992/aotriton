@@ -22,23 +22,23 @@ public:
 
   TritonKernel(const char* package_path, const char* stem_name);
 
-  hipError_t invoke(const char* kernel_name, dim3 grid, std::vector<void*>& args, hipStream_t stream);
+  cudaError_t invoke(const char* kernel_name, dim3 grid, std::vector<void*>& args, cudaStream_t stream);
 
   void clear_decompressed_image();
 
 private:
-  std::tuple<hipFunction_t, hipError_t> load_for_device(int device_id, const char* kernel_name);
-  hipFunction_t cfind_function(int device_id) const;
+  std::tuple<cudaFunction_t, cudaError_t> load_for_device(int device_id, const char* kernel_name);
+  cudaFunction_t cfind_function(int device_id) const;
 
   const char* package_path_ = nullptr;
   const char* stem_name_ = nullptr;
   size_t image_size_ = 0;
   struct DeviceFunction {
-    DeviceFunction(int device_id_, hipModule_t mod_, hipFunction_t func_);
+    DeviceFunction(int device_id_, cudaModule_t mod_, cudaFunction_t func_);
     ~DeviceFunction();
     int device_id = -1;
-    hipModule_t mod = nullptr;
-    hipFunction_t func = nullptr;
+    cudaModule_t mod = nullptr;
+    cudaFunction_t func = nullptr;
   };
   std::unordered_map<int, DeviceFunction> funcache_;
   std::shared_mutex funcache_mutex_;
