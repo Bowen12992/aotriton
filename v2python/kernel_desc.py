@@ -229,7 +229,7 @@ class KernelDescription(object):
         # print(f'{sig.compact_signature=}')
         fn += '-Sig-' + sig.compact_signature
         fn += '-Gpu-' + sig.target_gpu
-        fn += '.hsaco'
+        fn += '.cubin'
         return ObjectFileDescription(self, sig, outpath / fn, sancheck_fileexists=sancheck_fileexists)
 
     def gen_tuned_kernel_lut(self, tuned_db : 'KernelTuningDatabase') -> 'Iterator[KernelTuningLutForGPU]':

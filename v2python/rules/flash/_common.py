@@ -16,7 +16,7 @@ class FlashKernel(KernelDescription):
         # tuning database
         if not hasattr(self, 'gen_autotune_configs'):
             return True
-        MI = 'MI' in gpu
+        MI = 'RTX3090' in gpu
         Navi = 'Navi' in gpu
         def check_value(repr_name):
             for fsel in fsels:

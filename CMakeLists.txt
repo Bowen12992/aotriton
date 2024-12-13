@@ -31,8 +31,8 @@ endif()
 
 find_package(Python3 ${AOTRITON_MIN_PYTHON} COMPONENTS Interpreter REQUIRED)
 # Must set this otherwise hip-config-amd.cmake cannot find AMDDeviceLibs
-list(APPEND CMAKE_PREFIX_PATH "/opt/rocm")
-find_package(hip REQUIRED)
+list(APPEND CMAKE_PREFIX_PATH "/usr/local/cuda")
+find_package(CUDA REQUIRED)
 
 set(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" CACHE STRING "Virtual Environment Directory")
 option(AOTRITON_NO_PYTHON "Disable python binding build" OFF)
@@ -41,7 +41,8 @@ option(AOTRITON_BUILD_FOR_TUNING "Build all GPU kernels and set -DAOTRITON_BUILD
 option(AOTRITON_ENABLE_FP32_INPUTS "Enable FP32 support." ON)
 option(AOTRITON_NOIMAGE_MODE "Only build C++ Shim part. Kernel image builds are disabled" OFF)
 set(AOTRITON_GPU_BUILD_TIMEOUT "8.0" CACHE STRING "GPU kernel compiler times out after X minutes. 0 for indefinite. Highly recommended if AOTRITON_BUILD_FOR_TUNING=On.")
-set(TARGET_GPUS "MI200;MI300X;Navi31" CACHE STRING "Target Architecture (Note here uses Trade names)")
+# set(TARGET_GPUS "MI200;MI300X;Navi31" CACHE STRING "Target Architecture (Note here uses Trade names)")
+set(TARGET_GPUS "RTX3090" CACHE STRING "Target Architecture (Note here uses Trade names)")
 
 # Early failure for python binding
 if(NOT AOTRITON_NO_PYTHON)
@@ -92,7 +93,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E env VIRTUAL_ENV=${VENV_DIR} "${VENV_
 # string(STRIP "${VENV_SITE}" VENV_SITE)
 message("VENV_SITE ${VENV_SITE}")
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E env VIRTUAL_ENV=${VENV_DIR} "${VENV_DIR}/bin/python" -m pip install -r "${CMAKE_CURRENT_LIST_DIR}/requirements.txt")
+execute_process(COMMAND ${CMAKE_COMMAND} -E env VIRTUAL_ENV=${VENV_DIR} "${VENV_DIR}/bin/python" -m pip install -r "${CMAKE_CURRENT_LIST_DIR}/requirements.txt" -i https://pypi.tuna.tsinghua.edu.cn/simple)
 
 # AOTRITON_NOIMAGE_MODE does not need Triton
 if(NOT AOTRITON_NOIMAGE_MODE)
