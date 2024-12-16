@@ -43,7 +43,7 @@ def load_hsaco(hsaco : Path, offset):
             j = json.load(jf)
             if len(blob) > 0:
                 shared_memory_size = j['shared']
-                block_threads = j['num_warps'] * j['warp_size']
+                block_threads = j['num_warps'] * 32 # j['warp_size']
             else:
                 shared_memory_size = 0
                 block_threads = 0
@@ -112,6 +112,8 @@ def do_create(args):
         return
     aks2 = AKS2()
     aks2.load(args)
+    import os
+    os.makedirs(Path(args.o).with_suffix('.aks2').parent, exist_ok=True)
     with open(Path(args.o).with_suffix('.aks2'), "wb") as f:
         aks2.write(f)
 

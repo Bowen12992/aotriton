@@ -15,8 +15,8 @@ SOURCE_PATH = Path(__file__).resolve()
 COMPILER = SOURCE_PATH.parent / 'compile.py'
 
 GPU_TO_DIRECTORY = {
-    'A100'      : 'nv-a100',  # Ampere
-    'RTX3090'   : 'nv-rtx3090',  # Ampere
+    'A100'      : 'nv-a100',  
+    'RTX3090'   : 'nv-rtx3090',  
 }
 
 GPU_TO_CLUSTER_SUFFIX = {

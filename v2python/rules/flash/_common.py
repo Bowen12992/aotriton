@@ -14,6 +14,7 @@ class FlashKernel(KernelDescription):
                             fsels : 'list[ArgumentSelection]'):
         # Only kernels that provide gen_autotune_configs may have entries in
         # tuning database
+        return True 
         if not hasattr(self, 'gen_autotune_configs'):
             return True
         MI = 'RTX3090' in gpu

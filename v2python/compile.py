@@ -16,10 +16,8 @@ from triton.backends.compiler import GPUTarget
 
 KNOWN_TARGETS = {
         None     : None,
-        'MI200'  : GPUTarget('hip', 'gfx90a', 64),
-        'MI300X' : GPUTarget('hip', 'gfx942', 64),
-        'Navi31' : GPUTarget('hip', 'gfx1100', 32),
-        'Navi32' : GPUTarget('hip', 'gfx1101', 32),
+        'A100'  : GPUTarget('cuda', 80, 32),
+        'RTX3090' : GPUTarget('cuda', 86, 32),
 }
 
 desc = """
@@ -127,7 +125,7 @@ def do_compile(args):
     opts = {"num_warps": args.num_warps, "num_stages": args.num_stages}
     ccinfo = triton.compile(src, target=KNOWN_TARGETS[args.target], options=opts)
     # import pdb; pdb.set_trace()
-    with open(out_path.with_suffix('.hsaco'), 'bw') as f:
+    with open(out_path.with_suffix('.cubin'), 'bw') as f:
         f.write(ccinfo.kernel)
     with open(out_path.with_suffix('.json'), 'w') as f:
         di = ccinfo.metadata._asdict()
@@ -176,7 +174,7 @@ def main():
         print(f'Compiling {args.path=} {args.kernel_name} to {args.out_path=} result with status {status} exitcode {worker.exitcode}')
     # Write an empty file to avoid errors
     if status != 'Complete':
-        with open(args.out_path.with_suffix('.hsaco'), 'bw') as f:
+        with open(args.out_path.with_suffix('.cubin'), 'bw') as f:
             pass
         with open(args.out_path.with_suffix('.json'), 'w') as f:
             d = {'compile_status': status}

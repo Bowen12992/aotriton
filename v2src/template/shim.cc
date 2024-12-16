@@ -18,7 +18,7 @@ cudaError_t
 [[context_class_name]]::lookup_optimal([[param_class_name]]& params, GpuArch arch) {
     int64_t arch_number = get_arch_number(arch);
     if (arch_number < 0) {
-        return cudaErrorNoBinaryForGpu;
+        return cudaErrorNoKernelImageForDevice;
     }
     params.selected_kernel = nullptr;
     auto tune_func = autotune_table[arch_number][params.godel_number()];
@@ -31,7 +31,7 @@ cudaError_t
 cudaError_t
 [[context_class_name]]::launch(const [[param_class_name]]& params, cudaStream_t stream) {
     auto arch = getArchFromStream(stream);
-    cudaDeviceptr_t global_scratch = 0;
+    CUdeviceptr global_scratch = 0;
     [[put_kernel_arguments_on_stack]];
     std::vector<void*> args = { [[let_kernel_arguments]],
                                 const_cast<void*>(static_cast<const void*>(&global_scratch)),

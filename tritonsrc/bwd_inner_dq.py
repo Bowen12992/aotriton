@@ -102,9 +102,9 @@ def bwd_inner_dq(
             tl.static_assert(False, f'Unsupported BIAS_TYPE {BIAS_TYPE}')
         p = tl.math.exp2(qk_scale * qk - l_i[:, None])
 
-        if not FULL_BLOCKS or CAUSAL:
-            if qk_scale == 0.0:
-                p = tl.where(libdevice.isnan(p), 0.0, p)
+        # if not FULL_BLOCKS or CAUSAL:
+        #     if qk_scale == 0.0:
+        #         p = tl.where(libdevice.isnan(p), 0.0, p)
 
         # compute dp = dot(v, do)
         dp = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)

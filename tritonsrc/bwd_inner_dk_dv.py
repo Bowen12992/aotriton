@@ -96,11 +96,11 @@ def bwd_inner_dk_dv(
         # -- compute qk ----
         qk = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
         # TODO: These two checks can be optimized to occur on the last iter.
-        if not FULL_BLOCKS:
-            if overflow_size > 0:
-                boundary_n = tl.full((BLOCK_N, ), seqlen_q, dtype=tl.int32)
-                mask = offs_q_curr < boundary_n[None, :]
-                qk = tl.where(mask, qk, float("-inf"))
+        # if not FULL_BLOCKS:
+        #     if overflow_size > 0:
+        #         boundary_n = tl.full((BLOCK_N, ), seqlen_q, dtype=tl.int32)
+        #         mask = offs_q_curr < boundary_n[None, :]
+        #         qk = tl.where(mask, qk, float("-inf"))
         if CAUSAL:
             qk = tl.where(offs_q_curr >= offs_k[None, :], qk, float("-inf"))
         if BIAS_TYPE == 0:
@@ -129,9 +129,9 @@ def bwd_inner_dk_dv(
                           other=d_lse_padding[:, None])
         p = tl.math.exp2(qk_scale * qk - l_i) # (BLOCK_M, BLOCK_N)
 
-        if not FULL_BLOCKS or CAUSAL:
-            if qk_scale == 0.0:
-                p = tl.where(libdevice.isnan(p), 0.0, p)
+        # if not FULL_BLOCKS or CAUSAL:
+        #     if qk_scale == 0.0:
+        #         p = tl.where(libdevice.isnan(p), 0.0, p)
         # -- compute dv ----
         if ENABLE_DROPOUT:
             philox_offset = batch_philox_offset + start_q * max_seqlen_k + start_k

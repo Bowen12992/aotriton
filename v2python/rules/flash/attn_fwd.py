@@ -123,7 +123,7 @@ class attn_fwd(FlashKernel):
         ret = []
         MI = 'MI' in gpu
         Navi = 'Navi' in gpu
-        if MI:
+        if True:
             BLOCK_SIZES = [(32, 16), (128, 64), (64, 64), (64, 32), (128, 128)]
         elif Navi:
             BLOCK_SIZES = [(64, 32), (32, 32), (32, 16)]
@@ -175,4 +175,5 @@ class attn_fwd(FlashKernel):
             #     Config({'BLOCK_M': 16, 'BLOCK_N': 16, 'waves_per_eu': 2, 'pre_load_v': False}, num_stages=1, num_warps=2),
             # ]
         else:
-            assert False, f'Unknown GPU {gpu}'  # Sanity check, should be removed in the future
+            pass
+            # assert False, f'Unknown GPU {gpu}'  # Sanity check, should be removed in the future

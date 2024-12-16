@@ -19,7 +19,7 @@ check_gpu(AOTRITON_NS::Stream stream_wrap) {
   auto arch = getArchFromStream(stream);
   if (AttnFwdContext::get_arch_number(arch) < 0 || BwdPreprocessContext::get_arch_number(arch) < 0 ||
       BwdKernelDkDvContext::get_arch_number(arch) < 0 || BwdKernelDqContext::get_arch_number(arch) < 0) {
-    return cudaErrorNoBinaryForGpu;
+    return cudaErrorNoKernelImageForDevice;
   }
   return cudaSuccess;
 }

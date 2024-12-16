@@ -34,10 +34,10 @@ private:
   const char* stem_name_ = nullptr;
   size_t image_size_ = 0;
   struct DeviceFunction {
-    DeviceFunction(int device_id_, cudaModule_t mod_, cudaFunction_t func_);
+    DeviceFunction(int device_id_, CUmodule mod_, cudaFunction_t func_);
     ~DeviceFunction();
     int device_id = -1;
-    cudaModule_t mod = nullptr;
+    CUmodule mod = nullptr;
     cudaFunction_t func = nullptr;
   };
   std::unordered_map<int, DeviceFunction> funcache_;

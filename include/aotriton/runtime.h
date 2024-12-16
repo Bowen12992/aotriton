@@ -4,7 +4,9 @@
 #ifndef AOTRITON_V2_API_RUNTIME_H
 #define AOTRITON_V2_API_RUNTIME_H
 
-#include <cuda/cuda_runtime.h>
+#include <cuda_runtime.h>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 #include <aotriton/config.h>
 
 namespace AOTRITON_NS {

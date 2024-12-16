@@ -36,10 +36,7 @@ enum GpuVendor : uint32_t {
 // More bits for potential non-PCI architectures
 enum GpuArch : uint64_t {
   GPU_ARCH_UNKNOWN = 0,
-  GPU_ARCH_AMD_GFX90A = CAT(GpuVendor::kAMD, 0x90a),
-  GPU_ARCH_AMD_GFX942 = CAT(GpuVendor::kAMD, 0x942),
-  GPU_ARCH_AMD_GFX1100 = CAT(GpuVendor::kAMD, 0x1100),
-  GPU_ARCH_AMD_GFX1101 = CAT(GpuVendor::kAMD, 0x1101),
+  GPU_ARCH_NVIDIA_SM_80 = CAT(GpuVendor::kNVIDIA, 0x90a),
 };
 
 template<int Rank>

@@ -6,6 +6,7 @@
 #include <aotriton/runtime.h>
 #include <iostream>
 #include <mutex>
+#include <cuda.h>
 
 #ifdef NDEBUG
 #define AOTRITON_KERNEL_VERBOSE 0
@@ -18,14 +19,14 @@
 
 #define AOTRITON_CUDA_CHECK_RETURN(expr)                                                                      \
   do {                                                                                                       \
-    auto r = (expr);                                                                                         \
-    if (r != cudaSuccess)                                                                                     \
+    auto r = static_cast<cudaError_t>((expr));                                                                                         \
+    if (r != static_cast<cudaError_t>(cudaSuccess))                                                                                  \
       throw std::runtime_error("FAILURE at Line " STRINGIFICATION(__LINE__));                                \
   } while (0)
 
 namespace AOTRITON_NS {
 
-TritonKernel::DeviceFunction::DeviceFunction(int device_id_, cudaModule_t mod_, cudaFunction_t func_)
+TritonKernel::DeviceFunction::DeviceFunction(int device_id_, CUmodule mod_, cudaFunction_t func_)
   : device_id(device_id_)
   , mod(mod_)
   , func(func_) {
@@ -33,7 +34,7 @@ TritonKernel::DeviceFunction::DeviceFunction(int device_id_, cudaModule_t mod_, 
 
 TritonKernel::DeviceFunction::~DeviceFunction() {
   if (mod != nullptr) {
-    (void)cudaModuleUnload(mod);
+    (void)cuModuleUnload(mod);
   }
 }
 
@@ -68,16 +69,11 @@ TritonKernel::invoke(const char* kernel_name, dim3 grid, std::vector<void*>& arg
     }
   }
   return cudaLaunchKernel(func,
-                          grid.x,
-                          grid.y,
-                          grid.z,
-                          block_.x,
-                          block_.y,
-                          block_.z,
-                          shared_memory_size_,
-                          stream,
+                          grid,
+                          block_,
                           args.data(),
-                          0);
+                          shared_memory_size_,
+                          stream);
 }
 
 cudaFunction_t
@@ -90,11 +86,12 @@ TritonKernel::cfind_function(int device_id) const {
 
 std::tuple<cudaFunction_t, cudaError_t>
 TritonKernel::load_for_device(int device_id, const char* kernel_name) {
-  cudaJitOption opt[] = { cudaJitOptionErrorLogBufferSizeBytes,
-                         cudaJitOptionErrorLogBuffer,
-                         cudaJitOptionInfoLogBufferSizeBytes,
-                         cudaJitOptionInfoLogBuffer,
-                         cudaJitOptionLogVerbose };
+  CUjit_option_enum opt[] = {CU_JIT_MAX_REGISTERS};
+  // hipJitOption opt[] = { cudaJitOptionErrorLogBufferSizeBytes,
+  //                        cudaJitOptionErrorLogBuffer,
+  //                        cudaJitOptionInfoLogBufferSizeBytes,
+  //                        cudaJitOptionInfoLogBuffer,
+  //                        cudaJitOptionLogVerbose };
   const unsigned int errbufsize = 8192;
   const unsigned int logbufsize = 8192;
   std::vector<char> err(errbufsize, 0);
@@ -113,12 +110,12 @@ TritonKernel::load_for_device(int device_id, const char* kernel_name) {
   std::cerr << "Decompress kernel to " << kernel_image_ << std::endl;
 #endif
   if (!kernel_image_) {
-    return std::make_tuple(nullptr, cudaErrorInvalidImage);
+    return std::make_tuple(nullptr, cudaErrorInvalidValue);
   }
-  cudaModule_t mod;
+  CUmodule mod;
   cudaFunction_t func;
-  AOTRITON_CUDA_CHECK_RETURN(cudaModuleLoadDataEx(&mod, kernel_image_, 5, opt, optval));
-  AOTRITON_CUDA_CHECK_RETURN(cudaModuleGetFunction(&func, mod, kernel_name));
+  AOTRITON_CUDA_CHECK_RETURN(cuModuleLoadDataEx(&mod, kernel_image_, 5, opt, optval));
+  AOTRITON_CUDA_CHECK_RETURN(cuModuleGetFunction(&func, mod, kernel_name));
   funcache_.emplace(std::piecewise_construct,
                     std::forward_as_tuple(device_id),
                     std::forward_as_tuple(device_id, mod, func));

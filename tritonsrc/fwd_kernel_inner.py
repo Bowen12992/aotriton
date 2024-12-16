@@ -97,9 +97,9 @@ def attn_fwd_inner(
 
         # When sm_scale = 0.0 and MASK_STEPS/CAUSAL = True
         # qk * qk_scale = -inf * 0.0 = nan
-        if MASK_STEPS or CAUSAL:
-            if qk_scale == 0.0:
-                p = tl.where(libdevice.isnan(p), 0.0, p)
+        # if MASK_STEPS or CAUSAL:
+        #     if qk_scale == 0.0:
+        #         p = tl.where(libdevice.isnan(p), 0.0, p)
 
         # CAVEAT: Must update l_ij before applying dropout
         l_ij = tl.sum(p, 1)
