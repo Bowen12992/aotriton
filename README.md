@@ -1,3 +1,9 @@
+# aotriton on Nvidia gpus
+
+A fork of [Ahead of Time (AOT) Triton Math Library](https://github.com/ROCm/aotriton) to run on Nvidia GPUs
+
+Just a test for eliminating python runtime for triton kernel library cause I don't have AMD GPU cards for now...
+
 ## Build Instructions
 
 ```
