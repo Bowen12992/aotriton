@@ -8,6 +8,7 @@
 #include <aotriton/_internal/triton_kernel.h>
 #include <aotriton/dtypes.h>
 #include <aotriton/flash.h>
+#include <aotriton/pointwise.h>
 #include <aotriton/runtime.h>
 #include <functional>
 #include <string>
