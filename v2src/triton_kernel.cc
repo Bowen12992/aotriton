@@ -68,12 +68,24 @@ TritonKernel::invoke(const char* kernel_name, dim3 grid, std::vector<void*>& arg
       std::tie(func, err) = load_for_device(device_id, kernel_name);
     }
   }
-  return cudaLaunchKernel(func,
-                          grid,
-                          block_,
-                          args.data(),
-                          shared_memory_size_,
-                          stream);
+  // return cudaLaunchKernel(func,
+  //                         grid,
+  //                         block_,
+  //                         args.data(),
+  //                         shared_memory_size_,
+  //                         stream);
+  auto r = cuLaunchKernel(func,
+                        grid.x,
+                        grid.y,
+                        grid.z,
+                        block_.x,
+                        block_.y,
+                        block_.z,
+                        shared_memory_size_,
+                        stream,
+                        args.data(),
+                        nullptr);
+  return static_cast<cudaError_t>((r));  
 }
 
 cudaFunction_t
@@ -114,7 +126,8 @@ TritonKernel::load_for_device(int device_id, const char* kernel_name) {
   }
   CUmodule mod;
   cudaFunction_t func;
-  AOTRITON_CUDA_CHECK_RETURN(cuModuleLoadDataEx(&mod, kernel_image_, 5, opt, optval));
+  // AOTRITON_CUDA_CHECK_RETURN(cuModuleLoadDataEx(&mod, kernel_image_, 5, opt, optval));
+  AOTRITON_CUDA_CHECK_RETURN(cuModuleLoadData(&mod, kernel_image_));
   AOTRITON_CUDA_CHECK_RETURN(cuModuleGetFunction(&func, mod, kernel_name));
   funcache_.emplace(std::piecewise_construct,
                     std::forward_as_tuple(device_id),

@@ -56,6 +56,7 @@ public:
   template<typename Tensor>
   TensorView(const Tensor& tensor, std::function<DType(const Tensor&)> dtype_extractor) {
     base_ = tensor.data_ptr();
+    // #pragma unroll
     for (int i = 0; i < Rank; i++) {
       sizes_ = tensor.size(i);
       strides_ = tensor.stride(i);
