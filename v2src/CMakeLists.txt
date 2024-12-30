@@ -177,7 +177,8 @@ else(AOTRITON_BUILD_FOR_TUNING)
 endif(AOTRITON_BUILD_FOR_TUNING)
 target_link_libraries(aotriton_v2 PRIVATE lzma_interface)
 # target_link_libraries(aotriton_v2 PUBLIC hip::host hip::amdhip64)
-target_link_libraries(aotriton_v2 PUBLIC ${CUDA_LIBRARIES})
+link_directories("/usr/local/cuda/lib64/stubs")
+target_link_libraries(aotriton_v2 PUBLIC ${CUDA_LIBRARIES} /usr/local/cuda/lib64/stubs/libcuda.so)
 
 set_target_properties(aotriton_v2 PROPERTIES VERSION
   ${AOTRITON_VERSION_MAJOR_INT}.${AOTRITON_VERSION_MINOR_INT}.${AOTRITON_VERSION_PATCH_INT})

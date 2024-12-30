@@ -9,3 +9,4 @@ tritonsrc/tune-*.json
 1.*
 2.*
 dockerfile/mount/
+.vscode

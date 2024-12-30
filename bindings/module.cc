@@ -4,6 +4,7 @@
 #include <aotriton/config.h>
 #include <aotriton/dtypes.h>
 #include <aotriton/flash.h>
+#include <aotriton/pointwise.h>
 #include <aotriton/runtime.h>
 #include <aotriton/util.h>
 #include <aotriton/cpp_tune.h>
@@ -19,158 +20,27 @@ namespace aotriton = AOTRITON_NS;
 
 namespace pyaotriton {
   namespace v2 {
-    namespace flash {
-      using aotriton::v2::flash::FwdExtraArguments;
-      using aotriton::v2::flash::BwdExtraArguments;
+    namespace pointwise {
       void setup_module(py::module_& m) {
-        m.def("check_gpu", &aotriton::v2::flash::check_gpu, py::arg("stream"));
-        py::class_<FwdExtraArguments, aotriton::v2::CppTune>(m, "FwdExtraArguments")
-          .def(py::init<>())
-        ;
-        py::class_<BwdExtraArguments>(m, "BwdExtraArguments")
-          .def(py::init<>())
-#if AOTRITON_BUILD_FOR_TUNING
-          .def_readwrite("dkdv", &BwdExtraArguments::dkdv)
-          .def_readwrite("dqdb", &BwdExtraArguments::dqdb)
-#endif
-        ;
-        m.def("attn_fwd",
-              &aotriton::v2::flash::attn_fwd,
-              "Flash Attention Forward Pass",
+        // m.def("check_gpu", &aotriton::v2::pointwise::check_gpucheck_gpu, py::arg("stream"));
+        m.def("add_kernel",
+              &aotriton::v2::pointwise::add_kernel,
+              "add_kernel by AOT triton",
               py::call_guard<py::gil_scoped_release>(),
-              py::arg("q"),
-              py::arg("k"),
-              py::arg("v"),
-              py::arg("b"),
-              py::arg("sm_scale"),
-              py::arg("softmax_lse"),
+              py::arg("x"),
+              py::arg("y"),
               py::arg("out"),
-              py::arg("dropout_p"),
-              py::arg("philox_seed"),
-              py::arg("philox_offset1"),
-              py::arg("philox_offset2"),
-              py::arg("philox_seed_output"),
-              py::arg("philox_offset_output"),
-              py::arg("encoded_softmax"),
-              py::arg("is_causal"),
-              py::arg("stream") = nullptr,
-              py::arg("extargs") = FwdExtraArguments());
-        m.def("attn_fwd_compact_varlen",
-              &aotriton::v2::flash::attn_fwd_compact_varlen,
-              "Flash Attention Forward Pass, Compact Stored Varlen",
-              py::call_guard<py::gil_scoped_release>(),
-              py::arg("q"),
-              py::arg("k"),
-              py::arg("v"),
-              py::arg("cu_seqlens_q"),
-              py::arg("cu_seqlens_k"),
-              py::arg("max_seqlen_q"),
-              py::arg("max_seqlen_k"),
-              py::arg("b"),
-              py::arg("sm_scale"),
-              py::arg("softmax_lse"),
-              py::arg("out"),
-              py::arg("dropout_p"),
-              py::arg("philox_seed"),
-              py::arg("philox_offset1"),
-              py::arg("philox_offset2"),
-              py::arg("philox_seed_output"),
-              py::arg("philox_offset_output"),
-              py::arg("encoded_softmax"),
-              py::arg("is_causal"),
-              py::arg("stream") = nullptr,
-              py::arg("extargs") = FwdExtraArguments());
-        m.def("attn_bwd",
-              &aotriton::v2::flash::attn_bwd,
-              "Flash Attention Backward Pass",
-              py::call_guard<py::gil_scoped_release>(),
-              py::arg("q"),
-              py::arg("k"),
-              py::arg("v"),
-              py::arg("b"),
-              py::arg("sm_scale"),
-              py::arg("out"),
-              py::arg("dout"),
-              py::arg("dq"),
-              py::arg("dk"),
-              py::arg("dv"),
-              py::arg("db"),
-              py::arg("softmax_lse"),
-              py::arg("delta"),
-              py::arg("dropout_p"),
-              py::arg("philox_seed"),
-              py::arg("philox_offset1"),
-              py::arg("philox_offset2"),
-              py::arg("is_causal"),
-              py::arg("stream") = nullptr,
-              py::arg("extargs") = BwdExtraArguments());
-        m.def("attn_bwd_compact_varlen",
-              &aotriton::v2::flash::attn_bwd_compact_varlen,
-              "Flash Attention Backward Pass, Compact Stored Varlen",
-              py::call_guard<py::gil_scoped_release>(),
-              py::arg("q"),
-              py::arg("k"),
-              py::arg("v"),
-              py::arg("cu_seqlens_q"),
-              py::arg("cu_seqlens_k"),
-              py::arg("max_seqlen_q"),
-              py::arg("max_seqlen_k"),
-              py::arg("b"),
-              py::arg("sm_scale"),
-              py::arg("out"),
-              py::arg("dout"),
-              py::arg("dq"),
-              py::arg("dk"),
-              py::arg("dv"),
-              py::arg("db"),
-              py::arg("softmax_lse"),
-              py::arg("delta"),
-              py::arg("dropout_p"),
-              py::arg("philox_seed"),
-              py::arg("philox_offset1"),
-              py::arg("philox_offset2"),
-              py::arg("is_causal"),
-              py::arg("stream") = nullptr,
-              py::arg("extargs") = BwdExtraArguments());
-        m.def("debug_fill_dropout_rng",
-              &aotriton::v2::flash::debug_fill_dropout_rng,
-              "Flash Attention Debugging Function to get raw RNG numbers used in dropout",
-              py::call_guard<py::gil_scoped_release>(),
-              py::arg("q"),
-              py::arg("philox_seed"),
-              py::arg("philox_offset"),
-              py::arg("stream") = nullptr);
-        m.def("debug_fill_dropout_rng_tensor",
-              &aotriton::v2::flash::debug_fill_dropout_rng_tensor,
-              "Flash Attention Debugging Function to get raw RNG numbers used in dropout",
-              py::call_guard<py::gil_scoped_release>(),
-              py::arg("q"),
-              py::arg("philox_seed"),
-              py::arg("philox_offset"),
+              py::arg("n_elements"),
               py::arg("stream") = nullptr);
       }
-    } // namespace flash
+    } // namespace pointwise
 
     void setup_module(py::module_& m) {
       using aotriton::v2::CppTune;
       py::class_<aotriton::v2::CppTune>(m, "CppTune")
-          .def(py::init<>())
-#if AOTRITON_BUILD_FOR_TUNING
-          .def_readwrite("force_kernel_index", &CppTune::force_kernel_index)
-          .def_readonly("total_number_of_kernels", &CppTune::total_number_of_kernels)
-          .def_readonly("selected_kernel_psels", &CppTune::selected_kernel_psels)
-          .def_readonly("selected_kernel_copts", &CppTune::selected_kernel_copts)
-#endif
-      ;
-      using aotriton::v2::CppTuneSpecialKernelIndex;
-#define EV(name) value(#name, aotriton::v2::CppTuneSpecialKernelIndex::name)
-      py::enum_<CppTuneSpecialKernelIndex>(m, "CppTuneSpecialKernelIndex")
-        .EV(kDefault)
-        .EV(kSkipGPUCall)
-        .export_values();
-#undef EV
-      py::module_ mod_flash = m.def_submodule("flash", "Flash Attention API");
-      flash::setup_module(mod_flash);
+          .def(py::init<>());
+      py::module_ mod_pointwise = m.def_submodule("pointwise", "Pointwise API");
+      pointwise::setup_module(mod_pointwise);
     }
   } // namespace v2
 
