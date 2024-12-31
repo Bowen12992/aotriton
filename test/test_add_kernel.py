@@ -23,12 +23,9 @@ x = torch.ones(size, device='cuda')
 y = torch.ones(size, device='cuda')
 z = torch.zeros(size, device='cuda')
 
-for i in range(100):
-    add(mk_aotensor(x),mk_aotensor(y),mk_aotensor(z), size, Stream())
+add(mk_aotensor(x),mk_aotensor(y),mk_aotensor(z), size, Stream())
 print("----------------------------")
 print(x)
 print(y)
 print(z)
-
-
-
+print("----------------------------")

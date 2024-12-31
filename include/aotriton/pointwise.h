@@ -26,6 +26,6 @@ add_kernel(T1 x_ptr,
            int32_t n_elements,
            AOTRITON_NS::Stream stream);
 
-} // AOTRITON_NS::v2::flash
+} // AOTRITON_NS::v2::pointwise
 
 #endif
