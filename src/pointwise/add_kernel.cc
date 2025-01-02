@@ -5,6 +5,7 @@
 #include <aotriton/config.h>
 #include <aotriton/pointwise.h>
 #include <aotriton/util.h>
+#include <glog/logging.h>
 #include <pointwise/shim.add_kernel.h>
 
 namespace AOTRITON_NS::v2::pointwise {
@@ -35,7 +36,9 @@ cudaError_t add_kernel(
   if (err != cudaSuccess) {
     return err;
   }
+  LOG(INFO) << "GEMS ADD CPP LAUNCH";
   err = context.launch(params, stream);
+  VLOG(3) << "GEMS ADD CPP LAUNCH " << err;
   return err;
 }
 

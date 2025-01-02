@@ -175,10 +175,10 @@ if(AOTRITON_BUILD_FOR_TUNING)
 else(AOTRITON_BUILD_FOR_TUNING)
   target_compile_definitions(aotriton_v2 PRIVATE -DAOTRITON_BUILD_FOR_TUNING=0)
 endif(AOTRITON_BUILD_FOR_TUNING)
-target_link_libraries(aotriton_v2 PRIVATE lzma_interface)
+target_link_libraries(aotriton_v2 PRIVATE lzma_interface glog)
 # target_link_libraries(aotriton_v2 PUBLIC hip::host hip::amdhip64)
 link_directories("/usr/local/cuda/lib64/stubs")
-target_link_libraries(aotriton_v2 PUBLIC ${CUDA_LIBRARIES} /usr/local/cuda/lib64/stubs/libcuda.so)
+target_link_libraries(aotriton_v2 PUBLIC ${CUDA_LIBRARIES} /usr/local/cuda/lib64/stubs/libcuda.so glog)
 
 set_target_properties(aotriton_v2 PROPERTIES VERSION
   ${AOTRITON_VERSION_MAJOR_INT}.${AOTRITON_VERSION_MINOR_INT}.${AOTRITON_VERSION_PATCH_INT})
@@ -217,4 +217,4 @@ endif(NOT AOTRITON_NOIMAGE_MODE)
 
 # Python binding only available for AOTriton V2 API
 add_library(aotriton INTERFACE)
-target_link_libraries(aotriton INTERFACE aotriton_v2)
+target_link_libraries(aotriton INTERFACE aotriton_v2 glog)

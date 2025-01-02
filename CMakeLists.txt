@@ -113,6 +113,9 @@ if(NOT AOTRITON_NOIMAGE_MODE)
   add_custom_target(aotriton_venv_triton ALL DEPENDS ${AOTRITON_TRITON_EGGLINK})
 endif(NOT AOTRITON_NOIMAGE_MODE)
 
+add_subdirectory(third_party/glog)
+include_directories(third_party/glog/src)
+
 add_subdirectory(src)
 
 if(NOT AOTRITON_NO_PYTHON)
