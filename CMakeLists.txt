@@ -113,7 +113,7 @@ if(NOT AOTRITON_NOIMAGE_MODE)
   add_custom_target(aotriton_venv_triton ALL DEPENDS ${AOTRITON_TRITON_EGGLINK})
 endif(NOT AOTRITON_NOIMAGE_MODE)
 
-add_subdirectory(v2src)
+add_subdirectory(src)
 
 if(NOT AOTRITON_NO_PYTHON)
   add_subdirectory(bindings) # FIXME: compile python binding

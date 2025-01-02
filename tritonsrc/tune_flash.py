@@ -21,7 +21,7 @@ class Tuner(object):
     def __init__(self, args):
         self._args = args
         self._arch = rocm_get_gpuarch()
-        dbargs = ['python3', '-m', 'v2python.table_tool', '-v', '-f', self._args.db_file, '-k', self.KERNEL_FAMILY]
+        dbargs = ['python3', '-m', 'python.table_tool', '-v', '-f', self._args.db_file, '-k', self.KERNEL_FAMILY]
         if args.create_table_only:
             dbargs += ['--action', 'createtableonly']
         self._dbp = subprocess.Popen(dbargs,

@@ -23,7 +23,7 @@ class DbService(MonadService):
         else:
             self._jsonfile = None
         if a.db_file:
-            dbargs = ['python3', '-m', 'v2python.table_tool']
+            dbargs = ['python3', '-m', 'python.table_tool']
             if self.verbose:
                 dbargs += ['-v']
             dbargs += ['-f', self._args.db_file, '-k', self.KERNEL_FAMILY]

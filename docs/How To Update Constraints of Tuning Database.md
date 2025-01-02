@@ -10,8 +10,8 @@ Example usage:
 ## 1. Dump table to csv file
 
 ```
-python -m v2python.table_tool --action dumpcsv \
-		-f v2python/rules/tuning_database.sqlite3 \
+python -m python.table_tool --action dumpcsv \
+		-f python/rules/tuning_database.sqlite3 \
 		--table_name 'FLASH$attn_fwd' --table_file attn_fwd.csv
 ```
 
@@ -19,28 +19,28 @@ python -m v2python.table_tool --action dumpcsv \
 
 ```
 python tritonsrc/tune_flash.py \
-		--db_file v2python/rules/new_tuning_database.sqlite3 \
+		--db_file python/rules/new_tuning_database.sqlite3 \
 		--stop_at 0 --create_table_only
 ```
 
 ## 3. Load dumped csv file to new database
 
 ```
-python -m v2python.table_tool --action loadcsv \
-	-f v2python/rules/new_tuning_database.sqlite3 \
+python -m python.table_tool --action loadcsv \
+	-f python/rules/new_tuning_database.sqlite3 \
 	--table_name 'FLASH$attn_fwd' --table_file attn_fwd.csv -k ''
 ```
 
 ## 4. Fill the default values for new column(s)
 
 ```
-sqlite3 v2python/rules/new_tuning_database.sqlite3 'update FLASH$attn_fwd set inputs$BIAS_TYPE = 0;'
+sqlite3 python/rules/new_tuning_database.sqlite3 'update FLASH$attn_fwd set inputs$BIAS_TYPE = 0;'
 ```
 
 ## 5. Overwrite the old database
 
 ```
-cp v2python/rules/new_tuning_database.sqlite3 v2python/rules/tuning_database.sqlite3
+cp python/rules/new_tuning_database.sqlite3 python/rules/tuning_database.sqlite3
 ```
 
 # Method 2: In-place update is also possible with the following steps:

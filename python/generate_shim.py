@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 
 SOURCE_PATH = Path(__file__).resolve()
-CSRC = (SOURCE_PATH.parent.parent / 'v2src').absolute()
+CSRC = (SOURCE_PATH.parent.parent / 'src').absolute()
 INCBIN = (SOURCE_PATH.parent.parent / 'third_party/incbin/').absolute()
 COMMON_INCLUDE = (SOURCE_PATH.parent.parent / 'include/').absolute()
 # COMPILER = SOURCE_PATH.parent / 'compile.py'
@@ -233,7 +233,7 @@ class ShimMakefileGenerator(MakefileGenerator):
     '''
 
 class SourceBuilder(MakefileSegmentGenerator):
-    DIR = 'v2src'
+    DIR = 'src'
 
     def __init__(self, args, out):
         super().__init__(args, out)

@@ -13,5 +13,5 @@ cd ..
 # We do not recommend updating the tuning_database.sqlite3 directly
 PYTHONPATH=cpptune_build/bindings/ python test/tune_flash.py --json_file ~/navi32-aotriton_0.8.json --use_multigpu -1
 # Update tuning database from experiment data stored in JSON file
-python v2python/table_tool.py --action rawjson -k FLASH -f v2python/rules/tuning_database.sqlite3 -i ~/navi32-aotriton_0.8.json
+python python/table_tool.py --action rawjson -k FLASH -f python/rules/tuning_database.sqlite3 -i ~/navi32-aotriton_0.8.json
 ```

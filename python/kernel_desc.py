@@ -20,7 +20,7 @@ AOTRITON_ENABLE_FP32 = bool(int(os.getenv('AOTRITON_ENABLE_FP32', True)))
 
 # We use [[ ]] instead of { } for C++ code template
 def get_template(name):
-    with open(SOURCE_PATH.parent.parent / 'v2src' / 'template' / name, 'r') as f:
+    with open(SOURCE_PATH.parent.parent / 'src' / 'template' / name, 'r') as f:
         return f.read().replace('{', '{{').replace('}', '}}').replace('[[', '{').replace(']]', '}')
 
 def join_dicts(dicts : 'list[dict]') -> dict:
