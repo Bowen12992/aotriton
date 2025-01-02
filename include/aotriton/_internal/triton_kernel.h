@@ -4,20 +4,22 @@
 #ifndef AOTRITON_V2_API_TRITON_KERNEL_H
 #define AOTRITON_V2_API_TRITON_KERNEL_H
 
-#include "../runtime.h"
 #include <aotriton/config.h>
+
 #include <memory>
 #include <shared_mutex>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
 
+#include "../runtime.h"
+
 namespace AOTRITON_NS {
 
 class PackedKernel;
 
 class TritonKernel {
-public:
+ public:
   using Essentials = std::tuple<const void*, int, dim3>;
 
   TritonKernel(const char* package_path, const char* stem_name);
@@ -26,7 +28,7 @@ public:
 
   void clear_decompressed_image();
 
-private:
+ private:
   std::tuple<cudaFunction_t, cudaError_t> load_for_device(int device_id, const char* kernel_name);
   cudaFunction_t cfind_function(int device_id) const;
 
@@ -44,7 +46,7 @@ private:
   std::shared_mutex funcache_mutex_;
 
   int shared_memory_size_ = 0;
-  dim3 block_ { 256, 1, 1 };
+  dim3 block_ {256, 1, 1};
   const void* kernel_image_ = nullptr;
   bool kernel_loaded_ = false;
   void decompress_kernel();
@@ -52,6 +54,6 @@ private:
   std::shared_mutex packedkernel_mutex_;
 };
 
-}
+}  // namespace AOTRITON_NS
 
 #endif

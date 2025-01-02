@@ -1,8 +1,8 @@
 // Copyright © 2024 Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: MIT
 
-#include <aotriton/config.h>
 #include <aotriton/_internal/util.h>
+#include <aotriton/config.h>
 #include <aotriton/flash.h>
 #include <aotriton/util.h>
 #include <flash/shim.debug_fill_dropout_rng.h>
@@ -10,16 +10,18 @@
 
 namespace AOTRITON_NS::v2::flash {
 
-cudaError_t
-debug_fill_dropout_rng_tensor(T4 r, T0 philox_seed, T0 philox_offset, AOTRITON_NS::Stream stream_wrap) {
+cudaError_t debug_fill_dropout_rng_tensor(T4 r,
+                                          T0 philox_seed,
+                                          T0 philox_offset,
+                                          AOTRITON_NS::Stream stream_wrap) {
   cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const DebugFillDropoutRngTensorParams& params) -> dim3 {
     dim3 grid {
-      AOTRITON_NS::cdiv<uint32_t>(params.R->size(2), params.BLOCK_M),
-      uint32_t(params.R->size(1)),
-      uint32_t(params.R->size(0)),
+        AOTRITON_NS::cdiv<uint32_t>(params.R->size(2), params.BLOCK_M),
+        uint32_t(params.R->size(1)),
+        uint32_t(params.R->size(0)),
     };
     // std::cerr << "Grid conf " << grid.x << " " << grid.y << " " << grid.z << std::endl;
     return grid;
@@ -27,11 +29,11 @@ debug_fill_dropout_rng_tensor(T4 r, T0 philox_seed, T0 philox_offset, AOTRITON_N
   int seqlen_q = r.size(2);
   int seqlen_k = r.size(3);
   DebugFillDropoutRngTensorParams params = {
-    .R = &r,
-    .seqlen_q = seqlen_q,
-    .seqlen_k = seqlen_k,
-    .philox_seed_ptr = &philox_seed,
-    .philox_offset_base_ptr = &philox_offset,
+      .R = &r,
+      .seqlen_q = seqlen_q,
+      .seqlen_k = seqlen_k,
+      .philox_seed_ptr = &philox_seed,
+      .philox_offset_base_ptr = &philox_offset,
   };
   DebugFillDropoutRngTensorContext context;
   context.grid_calculator = grid_calculator;
@@ -43,16 +45,18 @@ debug_fill_dropout_rng_tensor(T4 r, T0 philox_seed, T0 philox_offset, AOTRITON_N
   return err;
 }
 
-cudaError_t
-debug_fill_dropout_rng(T4 r, uint64_t philox_seed, uint64_t philox_offset, AOTRITON_NS::Stream stream_wrap) {
+cudaError_t debug_fill_dropout_rng(T4 r,
+                                   uint64_t philox_seed,
+                                   uint64_t philox_offset,
+                                   AOTRITON_NS::Stream stream_wrap) {
   cudaError_t err;
   auto stream = stream_wrap.native();
   auto arch = getArchFromStream(stream);
   auto grid_calculator = [](const DebugFillDropoutRngParams& params) -> dim3 {
     dim3 grid {
-      AOTRITON_NS::cdiv<uint32_t>(params.R->size(2), params.BLOCK_M),
-      uint32_t(params.R->size(1)),
-      uint32_t(params.R->size(0)),
+        AOTRITON_NS::cdiv<uint32_t>(params.R->size(2), params.BLOCK_M),
+        uint32_t(params.R->size(1)),
+        uint32_t(params.R->size(0)),
     };
     // std::cerr << "Grid conf " << grid.x << " " << grid.y << " " << grid.z << std::endl;
     return grid;
@@ -60,11 +64,11 @@ debug_fill_dropout_rng(T4 r, uint64_t philox_seed, uint64_t philox_offset, AOTRI
   int seqlen_q = r.size(2);
   int seqlen_k = r.size(3);
   DebugFillDropoutRngParams params = {
-    .R = &r,
-    .seqlen_q = seqlen_q,
-    .seqlen_k = seqlen_k,
-    .philox_seed = philox_seed,
-    .philox_offset = static_cast<uint32_t>(philox_offset),
+      .R = &r,
+      .seqlen_q = seqlen_q,
+      .seqlen_k = seqlen_k,
+      .philox_seed = philox_seed,
+      .philox_offset = static_cast<uint32_t>(philox_offset),
   };
   DebugFillDropoutRngContext context;
   context.grid_calculator = grid_calculator;
@@ -76,4 +80,4 @@ debug_fill_dropout_rng(T4 r, uint64_t philox_seed, uint64_t philox_offset, AOTRI
   return err;
 }
 
-}
+}  // namespace AOTRITON_NS::v2::flash

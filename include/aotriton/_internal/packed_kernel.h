@@ -6,9 +6,10 @@
 
 #include <aotriton/_internal/triton_kernel.h>
 #include <aotriton/config.h>
+#include <stdint.h>
+
 #include <memory>
 #include <shared_mutex>
-#include <stdint.h>
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
@@ -20,7 +21,7 @@ using PackedKernelPtr = std::shared_ptr<PackedKernel>;
 struct AKS2_Metadata;
 
 class PackedKernel {
-public:
+ public:
   static PackedKernelPtr open(const char* package_path);
   PackedKernel(int fd);
   ~PackedKernel();
@@ -30,7 +31,7 @@ public:
 
   TritonKernel::Essentials filter(const char* stem_name) const;
 
-private:
+ private:
   static std::shared_mutex registry_mutex_;
   static std::unordered_map<std::string_view, PackedKernelPtr> registry_;
   // Note: do NOT drop the decompressed directory, its content is used by
@@ -43,6 +44,6 @@ private:
   std::unordered_map<std::string_view, const AKS2_Metadata*> directory_;
 };
 
-};
+};  // namespace AOTRITON_NS
 
 #endif

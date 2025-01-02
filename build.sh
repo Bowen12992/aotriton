@@ -18,3 +18,7 @@ cp /work/aotriton/build/installed_dir/aotriton/lib/* /usr/local/lib/python3.11/d
 rm venv/ -rf &&
 
 python3.11 /work/aotriton/test/test_add_kernel.py
+
+# clang-format
+# pip install clang-format==13.0.0
+# find . -path "./third_party" -prune -o \( -name "*.cc" -o -name "*.h" \) -print | xargs clang-format -i

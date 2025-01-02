@@ -1,6 +1,7 @@
 // Copyright © 2023-2024 Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: MIT
 
+// clang-format off
 #include "../shim.[[shim_kernel_name]].h"
 #include <aotriton/_internal/triton_kernel.h>
 #include <aotriton/cpp_tune.h>

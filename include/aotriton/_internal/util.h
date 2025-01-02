@@ -5,14 +5,14 @@
 #define AOTRITON_V2_INTERNAL_UTIL_H
 
 #include <aotriton/config.h>
+
 #include <climits>
 #include <cstdint>
 
 namespace AOTRITON_NS {
 
 inline uint32_t bit_width(uint32_t x) {
-  if (x == 0)
-    return 0;
+  if (x == 0) return 0;
   return (int)(CHAR_BIT * sizeof(x)) - __builtin_clz(x);
 }
 
@@ -28,6 +28,6 @@ inline bool is_power_of_2(uint32_t x) {
   return (x != 0) && ((x & (x - 1)) == 0);
 }
 
-}
+}  // namespace AOTRITON_NS
 
 #endif

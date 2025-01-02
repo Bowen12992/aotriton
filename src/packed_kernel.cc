@@ -3,16 +3,16 @@
 
 #include <aotriton/_internal/packed_kernel.h>
 #include <aotriton/runtime.h>
-#include <mutex>
-#include <cstring>
-#include <cassert>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <filesystem>
-#include <iostream>
 #include <lzma.h>
 #include <unistd.h>
+#include <cassert>
+#include <cstring>
+#include <filesystem>
+#include <iostream>
+#include <mutex>
 
 #ifdef NDEBUG
 #define AOTRITON_KERNEL_VERBOSE 0
@@ -27,8 +27,7 @@ constexpr int AOTRITON_LZMA_BUFSIZ = 64 * 1024;
 
 namespace {
 
-const fs::path&
-locate_aotriton_images() {
+const fs::path& locate_aotriton_images() {
   static fs::path aotriton_images = []() {
     Dl_info info;
     dladdr((void*)locate_aotriton_images, &info);
@@ -40,28 +39,25 @@ locate_aotriton_images() {
   return aotriton_images;
 }
 
-}
+}  // namespace
 
 namespace AOTRITON_NS {
 
 std::shared_mutex PackedKernel::registry_mutex_;
 std::unordered_map<std::string_view, PackedKernelPtr> PackedKernel::registry_;
 
-PackedKernelPtr
-PackedKernel::open(const char* package_path) {
+PackedKernelPtr PackedKernel::open(const char* package_path) {
   std::string_view path_view(package_path);
   {
     // Fast path
     std::shared_lock lock(registry_mutex_);
-    if (registry_.contains(package_path))
-      return registry_[path_view];
+    if (registry_.contains(package_path)) return registry_[path_view];
   }
 
   // Slow path, registry doesn't contain this kernel
   std::unique_lock lock(registry_mutex_);
   // Prevent TOCTTOU b/w two locks
-  if (registry_.contains(package_path))
-    return registry_[path_view];
+  if (registry_.contains(package_path)) return registry_[path_view];
   const auto& storage_base = locate_aotriton_images();
 #if AOTRITON_KERNEL_VERBOSE
   std::cerr << "open dir " << storage_base << std::endl;
@@ -128,7 +124,7 @@ PackedKernel::PackedKernel(int fd) {
   AKS2_Header header;
   auto header_read = ::read(fd, &header, sizeof(AKS2_Header));
   if (header_read == sizeof(AKS2_MAGIC) && std::string_view(header.magic, 4) != AKS2_MAGIC) {
-    final_status_ = cudaErrorInvalidSource; // Broken at XZ level
+    final_status_ = cudaErrorInvalidSource;  // Broken at XZ level
     return;
   }
   decompressed_content_.resize(header.uncompressed_size);
@@ -140,7 +136,7 @@ PackedKernel::PackedKernel(int fd) {
 #if AOTRITON_KERNEL_VERBOSE
     std::cerr << " lzma_stream_decoder error: " << ret << std::endl;
 #endif
-    final_status_ = cudaErrorInvalidSource; // Broken at XZ level
+    final_status_ = cudaErrorInvalidSource;  // Broken at XZ level
     return;
   }
   uint8_t inbuf[AOTRITON_LZMA_BUFSIZ];
@@ -163,7 +159,7 @@ PackedKernel::PackedKernel(int fd) {
     if (ret != LZMA_OK && ret != LZMA_STREAM_END) {
       decompressed_content_.clear();
       directory_.clear();
-      final_status_ = cudaErrorIllegalState; // Content not fully decompressed
+      final_status_ = cudaErrorIllegalState;  // Content not fully decompressed
       return;
     }
   }
@@ -201,15 +197,13 @@ PackedKernel::PackedKernel(int fd) {
 PackedKernel::~PackedKernel() {
 }
 
-TritonKernel::Essentials
-PackedKernel::filter(const char* stem_name) const {
+TritonKernel::Essentials PackedKernel::filter(const char* stem_name) const {
   if (status() != cudaSuccess) {
-    return std::make_tuple(nullptr, 0, dim3 { 0, 0, 0 });
+    return std::make_tuple(nullptr, 0, dim3 {0, 0, 0});
   }
   std::string_view filename(stem_name);
   auto iter = directory_.find(filename);
-  if (iter == directory_.end())
-    return std::make_tuple(nullptr, 0, dim3 { 0, 1, 1 });
+  if (iter == directory_.end()) return std::make_tuple(nullptr, 0, dim3 {0, 1, 1});
   auto meta = iter->second;
   if (meta->image_size == 0) {
     // TODO: Sanity check for shared_memory
@@ -219,7 +213,7 @@ PackedKernel::filter(const char* stem_name) const {
   }
   return std::make_tuple(kernel_start_ + meta->offset,
                          meta->shared_memory,
-                         dim3 { meta->number_of_threads, 1, 1 });
+                         dim3 {meta->number_of_threads, 1, 1});
 }
 
-}
+}  // namespace AOTRITON_NS

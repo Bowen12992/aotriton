@@ -1,4 +1,10 @@
-BasedOnStyle: Mozilla
+BasedOnStyle:  Google
+IndentWidth:     2
+TabWidth:        2
+ContinuationIndentWidth: 4
+AccessModifierOffset: -1  # The private/protected/public has no indent in class
+AllowAllParametersOfDeclarationOnNextLine: true
+IncludeBlocks: Preserve
 AllowShortBlocksOnASingleLine: Never
 AllowShortFunctionsOnASingleLine: None
 # Left-braces-in-the-same-line helps a lot when navigating the code with
@@ -11,7 +17,6 @@ AlignArrayOfStructures: Right
 # For code in bindings/
 NamespaceIndentation: Inner
 # Function arguments alignment
-AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllArgumentsOnNextLine: false
 AlignAfterOpenBracket: Align
 BinPackArguments: false

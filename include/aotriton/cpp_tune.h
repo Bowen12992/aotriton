@@ -23,6 +23,6 @@ enum CppTuneSpecialKernelIndex : int {
   kSkipGPUCall = -2,
 };
 
-}
+}  // namespace AOTRITON_NS::v2
 
 #endif
