@@ -3,7 +3,7 @@
 
 from .add import add
 
-SOURCE_FILE = 'tritonsrc/add_kernel.py'
+SOURCE_FILE = "tritonsrc/add_kernel.py"
 kernels = [
-    add('add_kernel', SOURCE_FILE),
+    add("add_kernel", SOURCE_FILE),
 ]

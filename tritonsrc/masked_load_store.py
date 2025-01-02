@@ -5,6 +5,7 @@
 import triton
 import triton.language as tl
 
+
 # Convenience function to load with optional boundary checks.
 # "First" is the major dim, "second" is the minor dim.
 @triton.jit
@@ -20,8 +21,9 @@ def load_fn(ptrs, offset_first, offset_second, _in_boundary_first, _in_boundary_
     return tl.load(ptrs, mask=mask, other=0.0)
     """
     if offset_first is not None and offset_second is not None:
-        mask = (offset_first[:, None] < boundary_first) & \
-               (offset_second[None, :] < boundary_second)
+        mask = (offset_first[:, None] < boundary_first) & (
+            offset_second[None, :] < boundary_second
+        )
         tensor = tl.load(ptrs, mask=mask, other=0.0)
     elif offset_first is not None:
         mask = offset_first[:, None] < boundary_first
@@ -33,34 +35,36 @@ def load_fn(ptrs, offset_first, offset_second, _in_boundary_first, _in_boundary_
         tensor = tl.load(ptrs)
     return tensor
 
+
 @triton.jit
 def mload1d(
-        REGS : tl.constexpr,
-        i_base,
-        i_start,
-        i_nums,
+    REGS: tl.constexpr,
+    i_base,
+    i_start,
+    i_nums,
 ):
     offs = tl.arange(0, REGS) + i_start
     i_ptrs = i_base + offs
     # return tl.load(i_base + offs)
-    overflow = i_start + REGS - i_nums
+    i_start + REGS - i_nums
     # if overflow <= 0:
     #     return tl.load(i_ptrs)
     i_ptrs_mask = tl.full([REGS], 1, dtype=tl.int1)
     i_ptrs_mask = i_ptrs_mask & (offs < i_nums)
     return tl.load(i_ptrs, mask=i_ptrs_mask, other=0.0)
 
+
 @triton.jit
 def mload2d(
-        REG_ROWS : tl.constexpr,
-        REG_COLS : tl.constexpr,
-        i_base,
-        i_start_row,
-        i_start_col,
-        i_rows,
-        i_cols,
-        stride_row,
-        stride_col,
+    REG_ROWS: tl.constexpr,
+    REG_COLS: tl.constexpr,
+    i_base,
+    i_start_row,
+    i_start_col,
+    i_rows,
+    i_cols,
+    stride_row,
+    stride_col,
 ):
     off_rows = tl.arange(0, REG_ROWS) + i_start_row
     off_cols = tl.arange(0, REG_COLS) + i_start_col
@@ -77,18 +81,19 @@ def mload2d(
         i_ptrs_mask = i_ptrs_mask & (off_cols[None, :] < i_cols)
     return tl.load(i_ptrs, mask=i_ptrs_mask, other=0.0)
 
+
 @triton.jit
 def mstore2d(
-        registers,
-        REG_ROWS : tl.constexpr,
-        REG_COLS : tl.constexpr,
-        o_base,
-        o_start_row,
-        o_start_col,
-        o_rows,
-        o_cols,
-        stride_row,
-        stride_col,
+    registers,
+    REG_ROWS: tl.constexpr,
+    REG_COLS: tl.constexpr,
+    o_base,
+    o_start_row,
+    o_start_col,
+    o_rows,
+    o_cols,
+    stride_row,
+    stride_col,
 ):
     off_rows = tl.arange(0, REG_ROWS) + o_start_row
     off_cols = tl.arange(0, REG_COLS) + o_start_col

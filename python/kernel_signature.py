@@ -1,16 +1,20 @@
 # Copyright © 2023-2024 Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-from .gpu_targets import AOTRITON_GPU_ARCH_TUNING_STRING
 import json
 
+from .gpu_targets import AOTRITON_GPU_ARCH_TUNING_STRING
+
+
 class KernelSignature(object):
-    def __init__(self,
-                 kdesc : 'KernelDescription',
-                 func_selections : 'tuple[ArgumentSelection]',
-                 perf_selections : 'tuple[ArgumentSelection]',
-                 compiler_options: dict,
-                 gpu : str):
+    def __init__(
+        self,
+        kdesc: "KernelDescription",
+        func_selections: "tuple[ArgumentSelection]",
+        perf_selections: "tuple[ArgumentSelection]",
+        compiler_options: dict,
+        gpu: str,
+    ):
         self._kdesc = kdesc
         self._func_selections = func_selections
         self._perf_selections = perf_selections
@@ -20,9 +24,9 @@ class KernelSignature(object):
         self._arch = AOTRITON_GPU_ARCH_TUNING_STRING[gpu]
 
     COMPACT_COMPILER_OPTION = {
-        'waves_per_eu' : 'wave',
-        'num_warps': 'warp',
-        'num_stages': 'stg',
+        "waves_per_eu": "wave",
+        "num_warps": "warp",
+        "num_stages": "stg",
     }
 
     def get_compact_compiler_option_name(self, co):
@@ -40,47 +44,53 @@ class KernelSignature(object):
     def compact_signature(self):
         lf = [s.compact_signature for s in self._func_selections]
         lp = [s.compact_signature for s in self._perf_selections]
-        lc = [f'{self.get_compact_compiler_option_name(k)}{v}' for k, v in self._compiler_options.items() if k != '_debug']
-        sf = '_'.join([x for x in lf if x is not None])
-        sp = '_'.join([x for x in lp if x is not None])
-        co = '_'.join([x for x in lc if x is not None])
-        return 'F__' + sf + '__P__' + sp + '__CO__' + co
+        lc = [
+            f"{self.get_compact_compiler_option_name(k)}{v}"
+            for k, v in self._compiler_options.items()
+            if k != "_debug"
+        ]
+        sf = "_".join([x for x in lf if x is not None])
+        sp = "_".join([x for x in lp if x is not None])
+        co = "_".join([x for x in lc if x is not None])
+        return "F__" + sf + "__P__" + sp + "__CO__" + co
 
     @property
     def human_readable_signature(self):
         lf = [s.human_readable_signature for s in self._func_selections]
         lp = [s.human_readable_signature for s in self._perf_selections]
-        lc = [f'{k}={v}' for k, v in self._compiler_options.items() if k != '_debug']
-        sf = ' '.join([x for x in lf if x is not None])
-        sp = ' '.join([x for x in lp if x is not None])
-        co = ' '.join([x for x in lc])
-        return sf + ' ; ' + sp + ' ; ' + co
+        lc = [f"{k}={v}" for k, v in self._compiler_options.items() if k != "_debug"]
+        sf = " ".join([x for x in lf if x is not None])
+        sp = " ".join([x for x in lp if x is not None])
+        co = " ".join([x for x in lc])
+        return sf + " ; " + sp + " ; " + co
 
     @property
     def functional_signature(self):
         lf = [s.compact_signature for s in self._func_selections]
-        sf = ','.join([x for x in lf if x is not None])
-        return 'FONLY__' + sf + '__'
+        sf = ",".join([x for x in lf if x is not None])
+        return "FONLY__" + sf + "__"
 
-    '''
+    """
     Similar to functional_signature, but some fields are 'Any' to make clustering possible
-    '''
+    """
+
     def get_partial_functional_signature(self, sans):
         def sig_with_sans(fsel):
             if fsel.repr_name in sans:
-                return 'Any'
+                return "Any"
             else:
                 return fsel.compact_signature
+
         lf = [sig_with_sans(s) for s in self._func_selections]
-        sf = ','.join([x for x in lf if x is not None])
-        return 'FONLY__' + sf + '__'
+        sf = ",".join([x for x in lf if x is not None])
+        return "FONLY__" + sf + "__"
 
     @property
     def arguments(self):
         return self._kdesc.ARGUMENTS
 
     @property
-    def triton_api_signature_list(self) -> 'list[str]':
+    def triton_api_signature_list(self) -> "list[str]":
         sig = {}
         [s.update_triton_api_signature(sig) for s in self._selections]
         l = [None] * len(self.arguments)
@@ -93,10 +103,10 @@ class KernelSignature(object):
         for ps in self._perf_selections:
             value = ps.argument_value
             if isinstance(value, bool):
-                value = 'true' if value else 'false'
+                value = "true" if value else "false"
             for aname in ps.argument_names:
-                perf_key_value.append(f'.{aname} = {value}')
-        return ', '.join(perf_key_value)
+                perf_key_value.append(f".{aname} = {value}")
+        return ", ".join(perf_key_value)
 
     def jsongen_psels(self) -> str:
         d = {}

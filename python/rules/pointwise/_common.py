@@ -1,20 +1,18 @@
 # Copyright © 2023-2024 Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-from ...kernel_desc import KernelDescription, get_possible_types, select_pattern
+from ...autotune_binning import BinningExact, BinningLessOrEqual
 from ...autotune_config import Config
-from ...autotune_binning import BinningLessOrEqual, BinningExact
+from ...kernel_desc import KernelDescription, get_possible_types, select_pattern
+
 
 class PointwiseKernel(KernelDescription):
-    KERNEL_FAMILY = 'pointwise'
+    KERNEL_FAMILY = "pointwise"
 
-    def sancheck_lut_tensor(self,
-                            gpu,
-                            lut_tensor,
-                            fsels : 'list[ArgumentSelection]'):
+    def sancheck_lut_tensor(self, gpu, lut_tensor, fsels: "list[ArgumentSelection]"):
         # Only kernels that provide gen_autotune_configs may have entries in
         # tuning database
-        return True 
+        return True
 
     # def get_missing_lut_entries(self, gpu, lut_tensor, fsels) -> list[dict]:
     #     SEQLEN_Q = [4,8,16,32,64,128,256,512,1024,2048,4096,8192]

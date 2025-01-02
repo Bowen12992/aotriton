@@ -10,7 +10,7 @@ cd /root/build
   cd aotriton
   git checkout ${AOTRITON_GIT_NAME}
   git submodule sync
-  git submodule update --init --recursive --force 
+  git submodule update --init --recursive --force
 )
 cd /root/build/aotriton/
 for f in /input/patch-${AOTRITON_GIT_NAME}/*.patch

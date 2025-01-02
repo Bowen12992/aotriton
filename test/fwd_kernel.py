@@ -18,9 +18,11 @@ Extra Credits:
 import triton
 import triton.language as tl
 
+
 @triton.jit
 def max_fn(x, y):
     return tl.math.max(x, y)
+
 
 @triton.jit
 def dropout_offsets(philox_seed, philox_offset, dropout_p, m, n, stride):
@@ -28,11 +30,15 @@ def dropout_offsets(philox_seed, philox_offset, dropout_p, m, n, stride):
     ns = tl.arange(0, n)
     return philox_offset + ms[:, None] * stride + ns[None, :]
 
+
 @triton.jit
 def dropout_rng(philox_seed, philox_offset, dropout_p, m, n, stride):
-    rng_offsets = dropout_offsets(philox_seed, philox_offset, dropout_p, m, n, stride).to(tl.uint32)
+    rng_offsets = dropout_offsets(
+        philox_seed, philox_offset, dropout_p, m, n, stride
+    ).to(tl.uint32)
     # TODO: use tl.randint for better performance
     return tl.rand(philox_seed, rng_offsets)
+
 
 @triton.jit
 def dropout_mask(philox_seed, philox_offset, dropout_p, m, n, stride):
@@ -40,10 +46,15 @@ def dropout_mask(philox_seed, philox_offset, dropout_p, m, n, stride):
     rng_keep = rng_output > dropout_p
     return rng_keep
 
+
 @triton.jit
 def attn_fwd_inner(
-    acc, l_i, m_i, q,
-    K_block_ptr, V_block_ptr,
+    acc,
+    l_i,
+    m_i,
+    q,
+    K_block_ptr,
+    V_block_ptr,
     start_m,
     seqlen_q,
     seqlen_k,
@@ -62,9 +73,9 @@ def attn_fwd_inner(
     RETURN_ENCODED_SOFTMAX: tl.constexpr,
 ):
     # range of values handled by this stage
-    if STAGE == 1: # "Solid" blocks of Causal masks
+    if STAGE == 1:  # "Solid" blocks of Causal masks
         lo, hi = 0, min(seqlen_k, start_m * BLOCK_M)
-    elif STAGE == 2: # "Semi-solid", or "Transition" block of Causal mask
+    elif STAGE == 2:  # "Semi-solid", or "Transition" block of Causal mask
         # Must use BLOCK_M, because the starting position of semi-solid block
         # is determined by start_m * BLOCK_M
         lo, hi = start_m * BLOCK_M, min(seqlen_k, start_m * BLOCK_M + BLOCK_M)
@@ -73,7 +84,7 @@ def attn_fwd_inner(
         V_block_ptr = tl.advance(V_block_ptr, (lo, 0))
         if RETURN_ENCODED_SOFTMAX:
             encoded_softmax_block_ptr = tl.advance(encoded_softmax_block_ptr, (0, lo))
-    else: # causal = False
+    else:  # causal = False
         lo, hi = 0, seqlen_k
     # loop over k, v and update accumulator
     for start_n in range(lo, hi, BLOCK_N):
@@ -101,43 +112,72 @@ def attn_fwd_inner(
         # While Flash attention paper computer the dropout AFTER exp2(qk- m_ij)
         if ENABLE_DROPOUT:
             philox_offset = batch_philox_offset + start_m * BLOCK_M * seqlen_k + start_n
-            keep = dropout_mask(philox_seed, philox_offset, dropout_p, BLOCK_M, BLOCK_N, seqlen_k)
+            keep = dropout_mask(
+                philox_seed, philox_offset, dropout_p, BLOCK_M, BLOCK_N, seqlen_k
+            )
             if RETURN_ENCODED_SOFTMAX:
-                tl.store(encoded_softmax_block_ptr, tl.where(keep, p, -p).to(encoded_softmax_block_ptr.type.element_ty)) # FIXME: This is correct code
+                tl.store(
+                    encoded_softmax_block_ptr,
+                    tl.where(keep, p, -p).to(encoded_softmax_block_ptr.type.element_ty),
+                )  # FIXME: This is correct code
             p = tl.where(keep, p, 0.0)
         elif RETURN_ENCODED_SOFTMAX:
-            tl.store(encoded_softmax_block_ptr, p.to(encoded_softmax_block_ptr.type.element_ty)) # FIXME: This is correct code
+            tl.store(
+                encoded_softmax_block_ptr,
+                p.to(encoded_softmax_block_ptr.type.element_ty),
+            )  # FIXME: This is correct code
         # -- update output accumulator --
         alpha = tl.math.exp2(m_i - m_ij)
         acc = acc * alpha[:, None]
         if not pre_load_v:
             v = tl.load(V_block_ptr)
-        '''
+        """
         if ENABLE_DROPOUT:
             v = (v / (1.0 - dropout_p)).to(V_block_ptr.type.element_ty)
-        '''
+        """
         # -- update m_i and l_i
         l_i = l_i * alpha + l_ij
         # update m_i and l_i
         m_i = m_ij
         if BLOCK_M == 1:
-            acc += tl.view(p.to(V_block_ptr.type.element_ty), [1]) * tl.view(v, [BLOCK_DMODEL])
+            acc += tl.view(p.to(V_block_ptr.type.element_ty), [1]) * tl.view(
+                v, [BLOCK_DMODEL]
+            )
         else:
             acc += tl.dot(p.to(V_block_ptr.type.element_ty), v)
         V_block_ptr = tl.advance(V_block_ptr, (BLOCK_N, 0))
         K_block_ptr = tl.advance(K_block_ptr, (0, BLOCK_N))
         if RETURN_ENCODED_SOFTMAX:
-            encoded_softmax_block_ptr = tl.advance(encoded_softmax_block_ptr, (0, BLOCK_N))
+            encoded_softmax_block_ptr = tl.advance(
+                encoded_softmax_block_ptr, (0, BLOCK_N)
+            )
     return acc, l_i, m_i
 
 
 @triton.jit
 def attn_fwd(
-    Q, K, V, sm_scale, M, Out,
-    stride_qz, stride_qh, stride_qm, stride_qk,
-    stride_kz, stride_kh, stride_kn, stride_kk,
-    stride_vz, stride_vh, stride_vk, stride_vn,
-    stride_oz, stride_oh, stride_om, stride_on,
+    Q,
+    K,
+    V,
+    sm_scale,
+    M,
+    Out,
+    stride_qz,
+    stride_qh,
+    stride_qm,
+    stride_qk,
+    stride_kz,
+    stride_kh,
+    stride_kn,
+    stride_kk,
+    stride_vz,
+    stride_vh,
+    stride_vk,
+    stride_vn,
+    stride_oz,
+    stride_oh,
+    stride_om,
+    stride_on,
     seqlen_q,
     seqlen_k,
     dropout_p,
@@ -153,10 +193,10 @@ def attn_fwd(
     RETURN_ENCODED_SOFTMAX: tl.constexpr,
 ):
     start_m = tl.program_id(0)
-    off_h = tl.program_id(1) # head index
-    off_z = tl.program_id(2) # batch index
+    off_h = tl.program_id(1)  # head index
+    off_z = tl.program_id(2)  # batch index
     num_h = tl.num_programs(1)
-    num_z = tl.num_programs(2)
+    tl.num_programs(2)
     q_offset = off_h * stride_qh + off_z * stride_qz
     Q_block_ptr = tl.make_block_ptr(
         base=Q + q_offset,
@@ -164,7 +204,7 @@ def attn_fwd(
         strides=(stride_qm, stride_qk),
         offsets=(start_m * BLOCK_M, 0),
         block_shape=(BLOCK_M, BLOCK_DMODEL),
-        order=(1, 0)
+        order=(1, 0),
     )
     k_offset = off_h * stride_kh + off_z * stride_kz
     K_block_ptr = tl.make_block_ptr(
@@ -173,7 +213,7 @@ def attn_fwd(
         strides=(stride_kk, stride_kn),
         offsets=(0, 0),
         block_shape=(BLOCK_DMODEL, BLOCK_N),
-        order=(0, 1)
+        order=(0, 1),
     )
     v_offset = off_h * stride_vh + off_z * stride_vz
     V_block_ptr = tl.make_block_ptr(
@@ -182,7 +222,7 @@ def attn_fwd(
         strides=(stride_vk, stride_vn),
         offsets=(0, 0),
         block_shape=(BLOCK_N, BLOCK_DMODEL),
-        order=(1, 0)
+        order=(1, 0),
     )
     # initialize offsets
     offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
@@ -208,36 +248,65 @@ def attn_fwd(
         batch_philox_offset = 0
     if RETURN_ENCODED_SOFTMAX:
         encoded_softmax_block_ptr = tl.make_block_ptr(
-                base=encoded_softmax + off_zh * seqlen_q * seqlen_k,
-                shape=(seqlen_q, seqlen_k),
-                strides=(seqlen_k, 1),
-                offsets=(start_m * BLOCK_M, 0),
-                block_shape=(BLOCK_M, BLOCK_N),
-                order=(1, 0)
-                )
+            base=encoded_softmax + off_zh * seqlen_q * seqlen_k,
+            shape=(seqlen_q, seqlen_k),
+            strides=(seqlen_k, 1),
+            offsets=(start_m * BLOCK_M, 0),
+            block_shape=(BLOCK_M, BLOCK_N),
+            order=(1, 0),
+        )
     else:
         encoded_softmax_block_ptr = 0
     if STAGE & 1:
         acc, l_i, m_i = attn_fwd_inner(
-            acc, l_i, m_i, q, K_block_ptr, V_block_ptr,
-            start_m, seqlen_q, seqlen_k,
-            dropout_p, philox_seed, batch_philox_offset, encoded_softmax_block_ptr,
-            BLOCK_M, BLOCK_DMODEL, BLOCK_N,
-            4 - STAGE, offs_m, offs_n,
+            acc,
+            l_i,
+            m_i,
+            q,
+            K_block_ptr,
+            V_block_ptr,
+            start_m,
+            seqlen_q,
+            seqlen_k,
+            dropout_p,
+            philox_seed,
+            batch_philox_offset,
+            encoded_softmax_block_ptr,
+            BLOCK_M,
+            BLOCK_DMODEL,
+            BLOCK_N,
+            4 - STAGE,
+            offs_m,
+            offs_n,
             pre_load_v,
             ENABLE_DROPOUT,
-            RETURN_ENCODED_SOFTMAX)
+            RETURN_ENCODED_SOFTMAX,
+        )
     # stage 2: on-band
     if STAGE & 2:
         # barrier makes it easier for compielr to schedule the
         # two loops independently
         tl.debug_barrier()
         acc, l_i, m_i = attn_fwd_inner(
-            acc, l_i, m_i, q, K_block_ptr, V_block_ptr,
-            start_m, seqlen_q, seqlen_k,
-            dropout_p, philox_seed, batch_philox_offset, encoded_softmax_block_ptr,
-            BLOCK_M, BLOCK_DMODEL, BLOCK_N,
-            2, offs_m, offs_n,
+            acc,
+            l_i,
+            m_i,
+            q,
+            K_block_ptr,
+            V_block_ptr,
+            start_m,
+            seqlen_q,
+            seqlen_k,
+            dropout_p,
+            philox_seed,
+            batch_philox_offset,
+            encoded_softmax_block_ptr,
+            BLOCK_M,
+            BLOCK_DMODEL,
+            BLOCK_N,
+            2,
+            offs_m,
+            offs_n,
             pre_load_v,
             ENABLE_DROPOUT,
             RETURN_ENCODED_SOFTMAX,
@@ -257,8 +326,6 @@ def attn_fwd(
         strides=(stride_om, stride_on),
         offsets=(start_m * BLOCK_M, 0),
         block_shape=(BLOCK_M, BLOCK_DMODEL),
-        order=(1, 0)
+        order=(1, 0),
     )
     tl.store(O_block_ptr, acc.to(Out.type.element_ty))
-
-

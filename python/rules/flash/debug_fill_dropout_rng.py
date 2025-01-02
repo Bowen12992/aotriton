@@ -3,61 +3,70 @@
 
 from ._common import FlashKernel, select_pattern
 
+
 class debug_fill_dropout_rng(FlashKernel):
     ARGUMENTS = [
-        'R',
-        'stride_rz', 'stride_rh', 'stride_rm', 'stride_rn',
-        'seqlen_q', 'seqlen_k',
-        'philox_seed',
-        'philox_offset',
-        'BLOCK_M',  # tl.constexpr starts here
-        'BLOCK_N',
+        "R",
+        "stride_rz",
+        "stride_rh",
+        "stride_rm",
+        "stride_rn",
+        "seqlen_q",
+        "seqlen_k",
+        "philox_seed",
+        "philox_offset",
+        "BLOCK_M",  # tl.constexpr starts here
+        "BLOCK_N",
     ]
     TENSOR_STRIDE_INPUTS = {
-        'R' : select_pattern(ARGUMENTS, 'stride_r'),
+        "R": select_pattern(ARGUMENTS, "stride_r"),
     }
     TENSOR_RANKS = {
-        '_default' : 4,
+        "_default": 4,
     }
     TYPE_CHOICES = {
-        frozenset(['R']) : ['*fp32:16'],
-        frozenset(['seqlen_q', 'seqlen_k']) : ['i32'],
-        frozenset(['philox_seed']) : ['u64'],
-        frozenset(['philox_offset']) : ['u32'],
+        frozenset(["R"]): ["*fp32:16"],
+        frozenset(["seqlen_q", "seqlen_k"]): ["i32"],
+        frozenset(["philox_seed"]): ["u64"],
+        frozenset(["philox_offset"]): ["u32"],
     }
-    FEAT_CHOICES = {
-    }
+    FEAT_CHOICES = {}
     PERF_CHOICES = {
-        frozenset(['BLOCK_M']) : [64],
-        frozenset(['BLOCK_N']) : [32],
+        frozenset(["BLOCK_M"]): [64],
+        frozenset(["BLOCK_N"]): [32],
     }
-    DEFAULT_NUM_WARPS=4
-    DEFAULT_NUM_STAGES=1
-    SHIM_KERNEL_NAME = 'debug_fill_dropout_rng'
+    DEFAULT_NUM_WARPS = 4
+    DEFAULT_NUM_STAGES = 1
+    SHIM_KERNEL_NAME = "debug_fill_dropout_rng"
 
-    AUTOTUNE_KEYS = { }
-    PARTIALLY_TUNED_FUNCTIONALS = [('PADDED_HEAD', None)]
+    AUTOTUNE_KEYS = {}
+    PARTIALLY_TUNED_FUNCTIONALS = [("PADDED_HEAD", None)]
     DOWNGRADER = []
+
 
 class debug_fill_dropout_rng_tensor(debug_fill_dropout_rng):
     ARGUMENTS = [
-        'R',
-        'stride_rz', 'stride_rh', 'stride_rm', 'stride_rn',
-        'seqlen_q', 'seqlen_k',
-        'philox_seed_ptr',
-        'philox_offset_base_ptr',
-        'BLOCK_M',  # tl.constexpr starts here
-        'BLOCK_N',
+        "R",
+        "stride_rz",
+        "stride_rh",
+        "stride_rm",
+        "stride_rn",
+        "seqlen_q",
+        "seqlen_k",
+        "philox_seed_ptr",
+        "philox_offset_base_ptr",
+        "BLOCK_M",  # tl.constexpr starts here
+        "BLOCK_N",
     ]
     TYPE_CHOICES = {
-        frozenset(['R']) : ['*fp32:16'],
-        frozenset(['seqlen_q', 'seqlen_k']) : ['i32'],
-        frozenset(['philox_seed_ptr']) : ['*u64'],
-        frozenset(['philox_offset_base_ptr']) : ['*u32'],
+        frozenset(["R"]): ["*fp32:16"],
+        frozenset(["seqlen_q", "seqlen_k"]): ["i32"],
+        frozenset(["philox_seed_ptr"]): ["*u64"],
+        frozenset(["philox_offset_base_ptr"]): ["*u32"],
     }
     TENSOR_RANKS = {
-        '_default' : 4,
-        'philox_seed_ptr': 0,
-        'philox_offset_base_ptr': 0,
+        "_default": 4,
+        "philox_seed_ptr": 0,
+        "philox_offset_base_ptr": 0,
     }
-    SHIM_KERNEL_NAME = 'debug_fill_dropout_rng_tensor'
+    SHIM_KERNEL_NAME = "debug_fill_dropout_rng_tensor"

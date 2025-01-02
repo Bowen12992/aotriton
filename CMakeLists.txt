@@ -33,7 +33,7 @@ find_package(Python3 ${AOTRITON_MIN_PYTHON} COMPONENTS Interpreter REQUIRED)
 # Must set this otherwise hip-config-amd.cmake cannot find AMDDeviceLibs
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/cuda")
 find_package(CUDA REQUIRED)
-include_directories(${CUDA_INCLUDE_DIRS}) 
+include_directories(${CUDA_INCLUDE_DIRS})
 
 set(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" CACHE STRING "Virtual Environment Directory")
 option(AOTRITON_NO_PYTHON "Disable python binding build" OFF)

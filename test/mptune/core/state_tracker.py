@@ -2,13 +2,15 @@
 # Copyright © 2024 Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-from .message import MonadMessage, MonadAction
-from .monad import Monad, MonadService
-from multiprocessing import Queue
 from datetime import datetime
+from multiprocessing import Queue
+
+from .message import MonadAction, MonadMessage
+from .monad import Monad, MonadService
+
 
 class StateTracker(Monad):
-    def __init__(self, args, identifier='StateTracker'):
+    def __init__(self, args, identifier="StateTracker"):
         super().__init__(args, identifier=identifier)
         self._q_up = Queue()
         self._q_resume = Queue()  # ask_for_last_message
@@ -35,55 +37,57 @@ class StateTracker(Monad):
         return self._q_resume.get()
 
     def ask_for_alive_status(self):
-        msg = MonadMessage(task_id=None,
-                           action=MonadAction.OOB_QueryAlive)
+        msg = MonadMessage(task_id=None, action=MonadAction.OOB_QueryAlive)
         self._q_up.put(msg)
         return self._q_resume.get()
 
     def update_ui(self, info):
         if self._q_ui:
-            self.print(f'StateTracker put ui {info}')
+            self.print(f"StateTracker put ui {info}")
             self._q_ui.put(info)
 
-class StateTrackerService(MonadService):
 
+class StateTrackerService(MonadService):
     def init(self, init_object):
         self._progress_tracker = {}
         self._alive_watchdog = {}
         self._task_confirmation = {}
         self._alive_monads = set(init_object)
-        pass
 
     def process(self, request):
         if request.action == MonadAction.OOB_QueryAlive:
-            alive = MonadMessage(task_id=None,
-                                 action=MonadAction.OOB_QueryAlive,
-                                 source=self.monad.identifier,
-                                 payload=self._alive_watchdog)
-            self.print(f'state_tracker reply {self._alive_watchdog=}')
+            alive = MonadMessage(
+                task_id=None,
+                action=MonadAction.OOB_QueryAlive,
+                source=self.monad.identifier,
+                payload=self._alive_watchdog,
+            )
+            self.print(f"state_tracker reply {self._alive_watchdog=}")
             self.monad._q_resume.put(alive)
             return
         self.monad.update_ui(request)  # CAVEAT, do not change the source
-        self.print(f'state_tracker send {request} to ui')
+        self.print(f"state_tracker send {request} to ui")
         if request.action == MonadAction.OOB_Init:
-            self.print(f'Monad {request.source=} goes alive')
+            self.print(f"Monad {request.source=} goes alive")
             # self._alive_monads.add(request.source)
             return
         if request.action == MonadAction.OOB_RequestStatus:
-            print(f'Requesting Status {request.source=}')
+            print(f"Requesting Status {request.source=}")
             progress = self._progress_tracker[request.source]
             if progress.task_id in self._task_confirmation:
-                self.monad._q_resume.put(self._task_confirmation[progress.task_id] \
-                                             .clone() \
-                                             .set_source(request.source))
+                self.monad._q_resume.put(
+                    self._task_confirmation[progress.task_id]
+                    .clone()
+                    .set_source(request.source)
+                )
             else:
                 self.monad._q_resume.put(progress)
             return
         if request.action == MonadAction.OOB_AckRecv:
             self._progress_tracker[request.source] = request
-            if request.task_id is not None and request.source == 'dbaccessor':
+            if request.task_id is not None and request.source == "dbaccessor":
                 self._task_confirmation[request.task_id] = request
-            self.print(f'Update _progress_tracker[{request.source=}] to {request}')
+            self.print(f"Update _progress_tracker[{request.source=}] to {request}")
             return
         if request.action == MonadAction.Pass:
             self._alive_watchdog[request.source] = datetime.now()
@@ -94,7 +98,9 @@ class StateTrackerService(MonadService):
             self.print(f"after {self._alive_monads=}")
             if not self._alive_monads:
                 self.print(f"StateTracker yields Exit")
-                yield MonadMessage(task_id=None, action=MonadAction.Exit, source='StateTracker')
+                yield MonadMessage(
+                    task_id=None, action=MonadAction.Exit, source="StateTracker"
+                )
             return
 
     def cleanup(self):

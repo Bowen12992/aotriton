@@ -76,5 +76,5 @@ docker run --mount "type=bind,source=$(realpath ${INPUT_DIR}),target=/input" \
   ${workspace_option1} "${workspace_option2}" \
   -w / \
   -it ${DOCKER_IMAGE} \
-  bash 
+  bash
   # /input/install.sh ${TRITON_LLVM_HASH} ${AOTRITON_GIT_NAME} "${AOTRITON_TARGET_GPUS}" ${NOIMAGE_MODE}

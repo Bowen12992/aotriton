@@ -1,34 +1,35 @@
 # Copyright © 2023-2024 Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
+import argparse
+import io
+import itertools
+import shutil
+from collections import defaultdict
+from pathlib import Path
+
 from .rules import kernels as triton_kernels
 from .tuning_database import KernelTuningDatabase
-import io
-import shutil
-import argparse
-import json
-from pathlib import Path
-from collections import defaultdict
-import itertools
 
 SOURCE_PATH = Path(__file__).resolve()
-COMPILER = SOURCE_PATH.parent / 'compile.py'
+COMPILER = SOURCE_PATH.parent / "compile.py"
 
 GPU_TO_DIRECTORY = {
-    'A100'      : 'nv-a100',  
-    'RTX3090'   : 'nv-rtx3090',  
+    "A100": "nv-a100",
+    "RTX3090": "nv-rtx3090",
 }
 
 GPU_TO_CLUSTER_SUFFIX = {
-    'A100'  : 'A100',
-    'RTX3090' : 'RTX3090',
+    "A100": "A100",
+    "RTX3090": "RTX3090",
 }
+
 
 class ClusterKernel(object):
     def __init__(self):
         self._registry = []
 
-    def collect_object_file(self, ofd : 'ObjectFileDescription'):
+    def collect_object_file(self, ofd: "ObjectFileDescription"):
         self._registry.append(ofd)
 
     def calc_clustering_scheme(self, n_combination):
@@ -36,7 +37,11 @@ class ClusterKernel(object):
         if n_combination == 0:  # No need to change functional(s) to 'Any'
             dic = defaultdict(list)
             for ofd in self._registry:
-                fonly = ofd.functional_signature + '_' + GPU_TO_CLUSTER_SUFFIX[ofd.target_gpu]
+                fonly = (
+                    ofd.functional_signature
+                    + "_"
+                    + GPU_TO_CLUSTER_SUFFIX[ofd.target_gpu]
+                )
                 dic[fonly].append(ofd)
             cluster_by[None] = dic
             return cluster_by
@@ -59,39 +64,47 @@ class ClusterKernel(object):
                 dic[fonly].append(ofd)
         return cluster_by
 
+
 class ClusterKernelFamily(object):
     def __init__(self):
         self._registry = defaultdict(ClusterKernel)
 
-    def collect_object_file(self, ofd : 'ObjectFileDescription'):
+    def collect_object_file(self, ofd: "ObjectFileDescription"):
         self._registry[ofd.SHIM_KERNEL_NAME].collect_object_file(ofd)
 
     def gen_clusters(self):
         for kernel_name, registry_0 in self._registry.items():
             yield kernel_name, registry_0
 
+
 class ClusterRegistry(object):
     def __init__(self):
         self._registry = defaultdict(ClusterKernelFamily)
 
-    def collect_object_file(self, ofd : 'ObjectFileDescription'):
+    def collect_object_file(self, ofd: "ObjectFileDescription"):
         self._registry[ofd.KERNEL_FAMILY].collect_object_file(ofd)
 
     def gen_clusters(self, n_combination):
         for family, registry_0 in self._registry.items():
             for kernel_name, registry_1 in registry_0.gen_clusters():
-                yield family, kernel_name, registry_1.calc_clustering_scheme(n_combination=n_combination)
+                yield family, kernel_name, registry_1.calc_clustering_scheme(
+                    n_combination=n_combination
+                )
 
     def write_clustering_tests(self, f):
         for family, kernel_name, cluster in self.gen_clusters(n_combination=2):
-            print(f'mkdir -p {family}/{kernel_name}', file=f)
+            print(f"mkdir -p {family}/{kernel_name}", file=f)
             for by, clusters in cluster.items():
-                bypath = '-'.join(by)
-                print(f'mkdir -p {family}/{kernel_name}/{bypath}', file=f)
+                bypath = "-".join(by)
+                print(f"mkdir -p {family}/{kernel_name}/{bypath}", file=f)
                 for fonly, obj_list in clusters.items():
-                    tar = f'{family}/{kernel_name}/{bypath}/{fonly}.tar'
-                    print(f'tar cf {tar} ', ' '.join([str(o.obj.absolute()) for o in obj_list]), file=f)
-                    print(f'zstd {tar}', file=f)
+                    tar = f"{family}/{kernel_name}/{bypath}/{fonly}.tar"
+                    print(
+                        f"tar cf {tar} ",
+                        " ".join([str(o.obj.absolute()) for o in obj_list]),
+                        file=f,
+                    )
+                    print(f"zstd {tar}", file=f)
 
     def write_bare(self, args, f):
         for family, kernel_name, cluster_bys in self.gen_clusters(n_combination=0):
@@ -102,21 +115,50 @@ class ClusterRegistry(object):
             for fonly, obj_list in clusters.items():
                 first_obj = obj_list[0]
                 dir_arch = GPU_TO_DIRECTORY[first_obj.target_gpu]
-                print(dir_arch, family, kernel_name, fonly, end=';', sep=';', file=f)
+                print(dir_arch, family, kernel_name, fonly, end=";", sep=";", file=f)
                 path_list = [str(o.obj.absolute()) for o in obj_list]
-                print(*path_list, sep=';', file=f)
+                print(*path_list, sep=";", file=f)
+
 
 def parse():
     p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument("--target_gpus", type=str, default=None, nargs='*',
-                   help="Ahead of Time (AOT) Compile Architecture. PyTorch is required for autodetection if --targets is missing.")
-    p.add_argument("--build_dir", type=str, default='build/', help="build directory")
-    p.add_argument("--python", type=str, default=None, help="python binary to run compile.py")
-    p.add_argument("--bare_mode", action='store_true', help="Instead of generating a proper Makefile, only generate compiler options and leave the remaining tasks to cmake.")
-    p.add_argument("--test_clustering", action='store_true', help="Generate TestClustering.sh to find the optimal clustering scheme.")
-    p.add_argument("--generate_cluster_info", action='store_true', help="Generate Bare.functionals for clustering.")
-    p.add_argument("--build_for_tuning", action='store_true', help="Build all possible GPU kernels for performance tuning.")
-    p.add_argument("--timeout", type=float, default=8.0, help='Maximal time the compiler can run. Passing < 0 for indefinite. No effect in bare mode (handled separately)')
+    p.add_argument(
+        "--target_gpus",
+        type=str,
+        default=None,
+        nargs="*",
+        help="Ahead of Time (AOT) Compile Architecture. PyTorch is required for autodetection if --targets is missing.",
+    )
+    p.add_argument("--build_dir", type=str, default="build/", help="build directory")
+    p.add_argument(
+        "--python", type=str, default=None, help="python binary to run compile.py"
+    )
+    p.add_argument(
+        "--bare_mode",
+        action="store_true",
+        help="Instead of generating a proper Makefile, only generate compiler options and leave the remaining tasks to cmake.",
+    )
+    p.add_argument(
+        "--test_clustering",
+        action="store_true",
+        help="Generate TestClustering.sh to find the optimal clustering scheme.",
+    )
+    p.add_argument(
+        "--generate_cluster_info",
+        action="store_true",
+        help="Generate Bare.functionals for clustering.",
+    )
+    p.add_argument(
+        "--build_for_tuning",
+        action="store_true",
+        help="Build all possible GPU kernels for performance tuning.",
+    )
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=8.0,
+        help="Maximal time the compiler can run. Passing < 0 for indefinite. No effect in bare mode (handled separately)",
+    )
     # p.add_argument("--autotune_data", type=str, default=None, help="Autotune results generated by tune_flash.py")
     args = p.parse_args()
     if args.test_clustering or args.generate_cluster_info:
@@ -124,80 +166,99 @@ def parse():
     # print(args)
     return args
 
-def gen_from_object(args, o : 'ObjectFileDescription', makefile):
+
+def gen_from_object(args, o: "ObjectFileDescription", makefile):
     if args.test_clustering or args.generate_cluster_info:
         args._cluster_registry.collect_object_file(o)
     if args.bare_mode:
-        print(o.obj.absolute(), o.src.absolute(), o.entrance, o.num_warps, o.num_stages, o.waves_per_eu, o.target_gpu, o.signature, sep=';', file=makefile)
+        print(
+            o.obj.absolute(),
+            o.src.absolute(),
+            o.entrance,
+            o.num_warps,
+            o.num_stages,
+            o.waves_per_eu,
+            o.target_gpu,
+            o.signature,
+            sep=";",
+            file=makefile,
+        )
         return
-    print('#', o.human_readable_signature, file=makefile)
-    target_fn = f'{o.KERNEL_FAMILY}/gpu_kernel_image.{o.SHIM_KERNEL_NAME}/{o._hsaco_kernel_path.name}'
-    print(target_fn, ':', o.src.absolute(), COMPILER.absolute(), file=makefile)
-    cmd  = f'LD_PRELOAD=$(LIBHSA_RUNTIME64) {COMPILER} {o.src.absolute()} --kernel_name {o.entrance} -o {o.obj.absolute()}'
-    cmd += f' -g 1,1,1 --num_warps {o.num_warps} --num_stages {o.num_stages} --waves_per_eu {o.waves_per_eu}'
+    print("#", o.human_readable_signature, file=makefile)
+    target_fn = f"{o.KERNEL_FAMILY}/gpu_kernel_image.{o.SHIM_KERNEL_NAME}/{o._hsaco_kernel_path.name}"
+    print(target_fn, ":", o.src.absolute(), COMPILER.absolute(), file=makefile)
+    cmd = f"LD_PRELOAD=$(LIBHSA_RUNTIME64) {COMPILER} {o.src.absolute()} --kernel_name {o.entrance} -o {o.obj.absolute()}"
+    cmd += f" -g 1,1,1 --num_warps {o.num_warps} --num_stages {o.num_stages} --waves_per_eu {o.waves_per_eu}"
     if o.target_gpu is not None:
         cmd += f" --target '{o.target_gpu}'"
-        target_gpu = o.target_gpu
+        o.target_gpu
     else:
-        target_gpu = 'native'
+        pass
     cmd += f" --signature '{o.signature}'"
     cmd += f" --timeout {args.timeout}"
-    print('\t', cmd, file=makefile)
-    print('', file=makefile)
+    print("\t", cmd, file=makefile)
+    print("", file=makefile)
     return target_fn
 
+
 def gen_from_kernel(args, k, build_dir, makefile):
-    outpath = build_dir / k.KERNEL_FAMILY / f'gpu_kernel_image.{k.SHIM_KERNEL_NAME}'
+    outpath = build_dir / k.KERNEL_FAMILY / f"gpu_kernel_image.{k.SHIM_KERNEL_NAME}"
     outpath.mkdir(parents=True, exist_ok=True)
-    target_all = f'compile_{k.SHIM_KERNEL_NAME}'
+    target_all = f"compile_{k.SHIM_KERNEL_NAME}"
     all_targets = []
     object_rules = io.StringIO()
     arches = [None] if args.target_gpus is None else args.target_gpus
     # ktd = None if args.build_for_tuning else KernelTuningDatabase(SOURCE_PATH.parent / 'rules', k)
-    ktd = KernelTuningDatabase(SOURCE_PATH.parent / 'rules', k, build_for_tuning=args.build_for_tuning)
-    if False: # Debugging
-        if k.SHIM_KERNEL_NAME == 'attn_fwd':
+    ktd = KernelTuningDatabase(
+        SOURCE_PATH.parent / "rules", k, build_for_tuning=args.build_for_tuning
+    )
+    if False:  # Debugging
+        if k.SHIM_KERNEL_NAME == "attn_fwd":
             assert not ktd.empty
     k.set_target_gpus(arches)
     for o in k.gen_all_object_files(outpath, tuned_db=ktd):
         all_targets.append(gen_from_object(args, o, object_rules))
     if not args.bare_mode:
-        print(target_all, ': ', end='', file=makefile)
+        print(target_all, ": ", end="", file=makefile)
         for t in all_targets:
-            print(t, end=' ', file=makefile)
-        print('\n\n', file=makefile)
+            print(t, end=" ", file=makefile)
+        print("\n\n", file=makefile)
     object_rules.seek(0)
     shutil.copyfileobj(object_rules, makefile)
     return target_all
 
+
 def main():
     args = parse()
     build_dir = Path(args.build_dir)
-    fn = 'Bare.compile' if args.bare_mode else 'Makefile.compile'
-    with open(build_dir / fn, 'w') as f:
+    fn = "Bare.compile" if args.bare_mode else "Makefile.compile"
+    with open(build_dir / fn, "w") as f:
         if not args.bare_mode:
-            print('LIBHSA_RUNTIME64=/opt/rocm/lib/libhsa-runtime64.so\n', file=f)
+            print("LIBHSA_RUNTIME64=/opt/rocm/lib/libhsa-runtime64.so\n", file=f)
         makefile_content = io.StringIO()
         per_kernel_targets = []
         for k in triton_kernels:
             k.set_target_gpus(args.target_gpus)
-            per_kernel_targets.append(gen_from_kernel(args, k, build_dir, makefile_content))
+            per_kernel_targets.append(
+                gen_from_kernel(args, k, build_dir, makefile_content)
+            )
         if not args.bare_mode:
-            print('all: ', end='', file=f)
+            print("all: ", end="", file=f)
             for t in per_kernel_targets:
-                print(t, end=' ', file=f)
-            print('\n', file=f)
+                print(t, end=" ", file=f)
+            print("\n", file=f)
         makefile_content.seek(0)
         shutil.copyfileobj(makefile_content, f)
         if not args.bare_mode:
-            print('.PHONY: all ', ' '.join(per_kernel_targets), file=f)
+            print(".PHONY: all ", " ".join(per_kernel_targets), file=f)
     if args.test_clustering:
-        archve_sh = 'TestClustering.sh'
-        with open(build_dir / archve_sh, 'w') as f:
+        archve_sh = "TestClustering.sh"
+        with open(build_dir / archve_sh, "w") as f:
             args._cluster_registry.write_clustering_tests(f)
     if args.generate_cluster_info:
-        with open(build_dir / 'Bare.cluster', 'w') as f:
+        with open(build_dir / "Bare.cluster", "w") as f:
             args._cluster_registry.write_bare(args, f)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

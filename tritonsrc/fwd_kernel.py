@@ -19,48 +19,71 @@ import triton.language as tl
 from fwd_kernel_inner import attn_fwd_inner
 from masked_load_store import mstore2d
 
+
 @triton.jit
 def cdiv_fn(x, y):
     return (x + y - 1) // y
 
+
 @triton.jit
 def attn_fwd(
-        Q, K, V, B, sm_scale, L, Out,
-        stride_qz, stride_qh, stride_qm, stride_qk,
-        stride_kz, stride_kh, stride_kn, stride_kk,
-        stride_vz, stride_vh, stride_vk, stride_vn,
-        stride_bz, stride_bh, stride_bm, stride_bn,
-        stride_oz, stride_oh, stride_om, stride_on,
-        num_head_q : 'i32',
-        num_head_k : 'i32',
-        cu_seqlens_q,
-        cu_seqlens_k,
-        num_seqlens : 'i32',
-        max_seqlen_q : 'i32',
-        max_seqlen_k : 'i32',
-        head_dim : 'i32',
-        dropout_p,
-        philox_seed_ptr,
-        philox_offset1 : '*u32',
-        philox_offset2 : 'i32',
-        philox_seed_output : '*u64',
-        philox_offset_output : '*u64',
-        encoded_softmax,
-        CAUSAL: tl.constexpr,
-        BLOCK_M: tl.constexpr,
-        BLOCK_DMODEL: tl.constexpr,
-        BLOCK_N: tl.constexpr,
-        pre_load_v: tl.constexpr,
-        ENABLE_DROPOUT: tl.constexpr,
-        RETURN_ENCODED_SOFTMAX: tl.constexpr,
-        PADDED_HEAD: tl.constexpr,
-        BIAS_TYPE: tl.constexpr,
+    Q,
+    K,
+    V,
+    B,
+    sm_scale,
+    L,
+    Out,
+    stride_qz,
+    stride_qh,
+    stride_qm,
+    stride_qk,
+    stride_kz,
+    stride_kh,
+    stride_kn,
+    stride_kk,
+    stride_vz,
+    stride_vh,
+    stride_vk,
+    stride_vn,
+    stride_bz,
+    stride_bh,
+    stride_bm,
+    stride_bn,
+    stride_oz,
+    stride_oh,
+    stride_om,
+    stride_on,
+    num_head_q: "i32",
+    num_head_k: "i32",
+    cu_seqlens_q,
+    cu_seqlens_k,
+    num_seqlens: "i32",
+    max_seqlen_q: "i32",
+    max_seqlen_k: "i32",
+    head_dim: "i32",
+    dropout_p,
+    philox_seed_ptr,
+    philox_offset1: "*u32",
+    philox_offset2: "i32",
+    philox_seed_output: "*u64",
+    philox_offset_output: "*u64",
+    encoded_softmax,
+    CAUSAL: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_DMODEL: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    pre_load_v: tl.constexpr,
+    ENABLE_DROPOUT: tl.constexpr,
+    RETURN_ENCODED_SOFTMAX: tl.constexpr,
+    PADDED_HEAD: tl.constexpr,
+    BIAS_TYPE: tl.constexpr,
 ):
     # lower case pre_load_v for backward compatibility, minimize changes to
     # other files. Will be fixed in a separate PR
-    PRE_LOAD_V : tl.constexpr = pre_load_v
+    PRE_LOAD_V: tl.constexpr = pre_load_v
     # No ALIBI interface for now
-    USE_ALIBI : tl.constexpr = False
+    USE_ALIBI: tl.constexpr = False
     # alibi_slopes = None
     start_m = tl.program_id(0)
     off_h_q = tl.program_id(1)
@@ -77,8 +100,10 @@ def attn_fwd(
             if philox_seed_output.cast(dtype=tl.uint64, bitcast=True) != 0:
                 tl.store(philox_seed_output, philox_seed)
             if philox_offset_output.cast(dtype=tl.uint64, bitcast=True) != 0:
-                tl.store(philox_offset_output,
-                         philox_offset_base.to(dtype=philox_seed_output.type.element_ty))
+                tl.store(
+                    philox_offset_output,
+                    philox_offset_base.to(dtype=philox_seed_output.type.element_ty),
+                )
     if num_seqlens > 0:
         cu_seqlens_q_start = tl.load(cu_seqlens_q + off_z)
         cu_seqlens_q_end = tl.load(cu_seqlens_q + off_z + 1)
@@ -95,7 +120,7 @@ def attn_fwd(
         seqlen_q = max_seqlen_q
         seqlen_k = max_seqlen_k
         batch_index = off_z
-    else: # < 0 for padded seqlen
+    else:  # < 0 for padded seqlen
         cu_seqlens_q_start = tl.load(cu_seqlens_q + off_z)
         cu_seqlens_q_end = tl.load(cu_seqlens_q + off_z + 1)
         seqlen_q = cu_seqlens_q_end - cu_seqlens_q_start
@@ -134,15 +159,22 @@ def attn_fwd(
         # If we have no blocks after adjusting for seqlen deltas, this WG is part of
         # the blocks that are all 0. We exit early.
         if n_blocks <= 0:
-            o_offset = Out + batch_index * stride_oz + off_h_q * stride_oh + cu_seqlens_q_start * stride_om
-            o_ptrs = o_offset + offs_m[:, None] * stride_om + offs_d[None, :] * stride_on
+            o_offset = (
+                Out
+                + batch_index * stride_oz
+                + off_h_q * stride_oh
+                + cu_seqlens_q_start * stride_om
+            )
+            o_ptrs = (
+                o_offset + offs_m[:, None] * stride_om + offs_d[None, :] * stride_on
+            )
             acc = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=Out.type.element_ty)
             o_ptrs_mask = offs_m[:, None] < seqlen_q
             # We still need to write 0s to the result
             tl.store(o_ptrs, acc, mask=o_ptrs_mask)
             # The tensor allocated for L is based on max_seqlen_q as that is
             # statically known.
-            L_ptr_base = L + (off_z * num_head_q + off_h_q)  * max_seqlen_q
+            L_ptr_base = L + (off_z * num_head_q + off_h_q) * max_seqlen_q
             l_ptrs = L_ptr_base + offs_m
             # We store inf to LSE, not -inf because in the bwd pass, we subtract this
             # from qk which makes it -inf, such that exp(qk - inf) = 0 for these masked blocks.
@@ -167,20 +199,37 @@ def attn_fwd(
         n_extra_tokens = seqlen_k % BLOCK_N
 
     # Compute pointers for all the tensors used in this kernel.
-    q_offset = Q + batch_index * stride_qz + off_h_q * stride_qh + cu_seqlens_q_start * stride_qm
+    q_offset = (
+        Q
+        + batch_index * stride_qz
+        + off_h_q * stride_qh
+        + cu_seqlens_q_start * stride_qm
+    )
     q_ptrs = q_offset + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qk
-    k_offset = K + batch_index * stride_kz + off_h_k * stride_kh + cu_seqlens_k_start * stride_kn
+    k_offset = (
+        K
+        + batch_index * stride_kz
+        + off_h_k * stride_kh
+        + cu_seqlens_k_start * stride_kn
+    )
     k_ptrs = k_offset + offs_d[:, None] * stride_kk + offs_n[None, :] * stride_kn
-    v_offset = V + batch_index * stride_vz + off_h_k * stride_vh + cu_seqlens_k_start * stride_vk
+    v_offset = (
+        V
+        + batch_index * stride_vz
+        + off_h_k * stride_vh
+        + cu_seqlens_k_start * stride_vk
+    )
     v_ptrs = v_offset + offs_n[:, None] * stride_vk + offs_d[None, :] * stride_vn
     if BIAS_TYPE == 0:
         bias_ptrs = None
     elif BIAS_TYPE == 1:
         # Note: this might get large enough to overflow on some configs
         bias_offset = off_h_q * stride_bh
-        bias_ptrs = B + bias_offset + offs_m[:, None] * stride_bm + offs_n[None, :] * stride_bn
+        bias_ptrs = (
+            B + bias_offset + offs_m[:, None] * stride_bm + offs_n[None, :] * stride_bn
+        )
     else:
-        tl.static_assert(False, f'Unsupported BIAS_TYPE {BIAS_TYPE}')
+        tl.static_assert(False, f"Unsupported BIAS_TYPE {BIAS_TYPE}")
 
     if USE_ALIBI:
         a_offset = batch_index * stride_az + off_h_q * stride_ah
@@ -202,7 +251,7 @@ def attn_fwd(
         encoded_sm_base = None
         # encoded_sm_ptrs = None
     # initialize pointer to m and l
-    m_i = tl.full([BLOCK_M], -3.40282e+38, dtype=tl.float32)
+    m_i = tl.full([BLOCK_M], -3.40282e38, dtype=tl.float32)
     l_i = tl.full([BLOCK_M], 1.0, dtype=tl.float32)
     acc = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
     # scale sm_scale by log_2(e) and use 2^x in the loop as we do not
@@ -236,20 +285,46 @@ def attn_fwd(
     if n_full_blocks > 0:
         block_max = (n_blocks - masked_blocks) * BLOCK_N
         acc, l_i, m_i = attn_fwd_inner(
-                acc, l_i, m_i, qk_scale, bias_scale,
-                q, k_ptrs, v_ptrs, bias_ptrs,
-                stride_kn, stride_vk, stride_bn,
-                seqlen_q, seqlen_k, head_dim,
-                start_m, block_min, block_max,
-                dropout_p, philox_seed, batch_philox_offset, max_seqlen_k,
-                encoded_sm_base,
-                # offs_n_causal, masked_blocks, n_extra_tokens
-                0, 0, 0,
-                alibi_slope,
-                # CAUSAL, ....
-                False, BLOCK_M, BLOCK_DMODEL, BLOCK_N,
-                # _, MASK_STEPS, ...
-                PRE_LOAD_V, False, ENABLE_DROPOUT, RETURN_ENCODED_SOFTMAX, PADDED_HEAD)
+            acc,
+            l_i,
+            m_i,
+            qk_scale,
+            bias_scale,
+            q,
+            k_ptrs,
+            v_ptrs,
+            bias_ptrs,
+            stride_kn,
+            stride_vk,
+            stride_bn,
+            seqlen_q,
+            seqlen_k,
+            head_dim,
+            start_m,
+            block_min,
+            block_max,
+            dropout_p,
+            philox_seed,
+            batch_philox_offset,
+            max_seqlen_k,
+            encoded_sm_base,
+            # offs_n_causal, masked_blocks, n_extra_tokens
+            0,
+            0,
+            0,
+            alibi_slope,
+            # CAUSAL, ....
+            False,
+            BLOCK_M,
+            BLOCK_DMODEL,
+            BLOCK_N,
+            # _, MASK_STEPS, ...
+            PRE_LOAD_V,
+            False,
+            ENABLE_DROPOUT,
+            RETURN_ENCODED_SOFTMAX,
+            PADDED_HEAD,
+        )
         block_min = block_max
         block_max = n_blocks * BLOCK_N
 
@@ -270,24 +345,50 @@ def attn_fwd(
         elif BIAS_TYPE == 1:
             bias_ptrs += n_full_blocks * BLOCK_N * stride_bn
         else:
-            tl.static_assert(False, f'Unsupported BIAS_TYPE {BIAS_TYPE}')
+            tl.static_assert(False, f"Unsupported BIAS_TYPE {BIAS_TYPE}")
         # if RETURN_ENCODED_SOFTMAX:
         #     encoded_sm_base += n_full_blocks * BLOCK_N
-            # encoded_sm_ptrs += n_full_blocks * BLOCK_N
+        # encoded_sm_ptrs += n_full_blocks * BLOCK_N
         acc, l_i, m_i = attn_fwd_inner(
-                acc, l_i, m_i, qk_scale, bias_scale,
-                q, k_ptrs, v_ptrs, bias_ptrs,
-                stride_kn, stride_vk, stride_bn,
-                seqlen_q, seqlen_k, head_dim,
-                start_m, block_min, block_max,
-                dropout_p, philox_seed, batch_philox_offset, max_seqlen_k,
-                encoded_sm_base,
-                offs_n_causal, masked_blocks, n_extra_tokens,
-                alibi_slope,
-                # CAUSAL, ....
-                CAUSAL, BLOCK_M, BLOCK_DMODEL, BLOCK_N,
-                # _, MASK_STEPS, ...
-                PRE_LOAD_V, True, ENABLE_DROPOUT, RETURN_ENCODED_SOFTMAX, PADDED_HEAD)
+            acc,
+            l_i,
+            m_i,
+            qk_scale,
+            bias_scale,
+            q,
+            k_ptrs,
+            v_ptrs,
+            bias_ptrs,
+            stride_kn,
+            stride_vk,
+            stride_bn,
+            seqlen_q,
+            seqlen_k,
+            head_dim,
+            start_m,
+            block_min,
+            block_max,
+            dropout_p,
+            philox_seed,
+            batch_philox_offset,
+            max_seqlen_k,
+            encoded_sm_base,
+            offs_n_causal,
+            masked_blocks,
+            n_extra_tokens,
+            alibi_slope,
+            # CAUSAL, ....
+            CAUSAL,
+            BLOCK_M,
+            BLOCK_DMODEL,
+            BLOCK_N,
+            # _, MASK_STEPS, ...
+            PRE_LOAD_V,
+            True,
+            ENABLE_DROPOUT,
+            RETURN_ENCODED_SOFTMAX,
+            PADDED_HEAD,
+        )
     # epilogue
     l_recip = 1.0 / l_i[:, None]
     acc = acc * l_recip
@@ -309,7 +410,9 @@ def attn_fwd(
         tl.assume(start_m_idx >= 0)
         tl.assume(end_m_idx >= 0)
         if causal_start_idx > start_m_idx and causal_start_idx < end_m_idx:
-            out_mask_boundary = tl.full((BLOCK_DMODEL, ), causal_start_idx, dtype=tl.int32)
+            out_mask_boundary = tl.full(
+                (BLOCK_DMODEL,), causal_start_idx, dtype=tl.int32
+            )
             mask_m_offsets = start_m_idx + tl.arange(0, BLOCK_M)
             out_ptrs_mask = mask_m_offsets[:, None] >= out_mask_boundary[None, :]
             z = 0.0
@@ -325,20 +428,27 @@ def attn_fwd(
     # This is only true for the last M block. For others, overflow_size will be -ve
     overflow_size = end_m_idx - seqlen_q
     if overflow_size > 0:
-        boundary = tl.full((BLOCK_M, ), BLOCK_M - overflow_size, dtype=tl.int32)
+        boundary = tl.full((BLOCK_M,), BLOCK_M - overflow_size, dtype=tl.int32)
         l_ptrs_mask = tl.arange(0, BLOCK_M) < boundary
         tl.store(l_ptrs, m_i + tl.math.log2(l_i), mask=l_ptrs_mask)
     else:
         tl.store(l_ptrs, m_i + tl.math.log2(l_i))
 
-    o_base = Out + batch_index * stride_oz + off_h_q * stride_oh + cu_seqlens_q_start * stride_om
-    mstore2d(acc,
-             BLOCK_M,
-             BLOCK_DMODEL,
-             o_base=o_base,
-             o_start_row=start_m * BLOCK_M,
-             o_start_col=0,
-             o_rows=seqlen_q,
-             o_cols=head_dim,
-             stride_row=stride_om,
-             stride_col=stride_on)
+    o_base = (
+        Out
+        + batch_index * stride_oz
+        + off_h_q * stride_oh
+        + cu_seqlens_q_start * stride_om
+    )
+    mstore2d(
+        acc,
+        BLOCK_M,
+        BLOCK_DMODEL,
+        o_base=o_base,
+        o_start_row=start_m * BLOCK_M,
+        o_start_col=0,
+        o_rows=seqlen_q,
+        o_cols=head_dim,
+        stride_row=stride_om,
+        stride_col=stride_on,
+    )

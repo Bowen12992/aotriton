@@ -3,38 +3,57 @@
 
 import triton
 import triton.language as tl
-from dropout import dropout_mask, dropout_rng, dropout_offsets
+from dropout import dropout_mask, dropout_offsets, dropout_rng
 from masked_load_store import load_fn, mstore2d
 from triton.language.extra import libdevice
 
+
 @triton.jit
 def attn_fwd_inner(
-        # Problem Description
-        acc, l_i, m_i, qk_scale, bias_scale,
-        q, k_ptrs, v_ptrs, bias_ptrs,
-        stride_kn, stride_vk, stride_bn,
-        seqlen_q, seqlen_k, head_dim,
-        # Sub-problem range
-        start_m, block_min, block_max,
-        # Auxiliary options
-        ## Dropout
-        dropout_p, philox_seed, batch_philox_offset, max_seqlen_k,
-        ## Debug Return
-        encoded_sm_base,
-        ## Irregular support
-        offs_n_causal, masked_blocks, n_extra_tokens,
-        ## Alibi
-        alibi_slope,
-        # constexpr starts here
-        CAUSAL: tl.constexpr,
-        BLOCK_M: tl.constexpr,
-        BLOCK_DMODEL: tl.constexpr,
-        BLOCK_N: tl.constexpr,
-        PRE_LOAD_V: tl.constexpr,
-        MASK_STEPS: tl.constexpr,
-        ENABLE_DROPOUT: tl.constexpr,
-        RETURN_ENCODED_SOFTMAX: tl.constexpr,
-        PADDED_HEAD: tl.constexpr,
+    # Problem Description
+    acc,
+    l_i,
+    m_i,
+    qk_scale,
+    bias_scale,
+    q,
+    k_ptrs,
+    v_ptrs,
+    bias_ptrs,
+    stride_kn,
+    stride_vk,
+    stride_bn,
+    seqlen_q,
+    seqlen_k,
+    head_dim,
+    # Sub-problem range
+    start_m,
+    block_min,
+    block_max,
+    # Auxiliary options
+    ## Dropout
+    dropout_p,
+    philox_seed,
+    batch_philox_offset,
+    max_seqlen_k,
+    ## Debug Return
+    encoded_sm_base,
+    ## Irregular support
+    offs_n_causal,
+    masked_blocks,
+    n_extra_tokens,
+    ## Alibi
+    alibi_slope,
+    # constexpr starts here
+    CAUSAL: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_DMODEL: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    PRE_LOAD_V: tl.constexpr,
+    MASK_STEPS: tl.constexpr,
+    ENABLE_DROPOUT: tl.constexpr,
+    RETURN_ENCODED_SOFTMAX: tl.constexpr,
+    PADDED_HEAD: tl.constexpr,
 ):
     offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
     offs_n = tl.arange(0, BLOCK_N)
@@ -84,8 +103,9 @@ def attn_fwd_inner(
             # Compute the global position of each token within the sequence
             global_m_positions = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
             global_n_positions = start_n + tl.arange(0, BLOCK_N)
-            alibi_block = compute_alibi_block(alibi_slope, seqlen_q, seqlen_k, global_m_positions,
-                                              global_n_positions)
+            alibi_block = compute_alibi_block(
+                alibi_slope, seqlen_q, seqlen_k, global_m_positions, global_n_positions
+            )
             qk += alibi_block * 1.44269504089
 
         # This has softmax approach has numerical errors for large inputs:
@@ -104,32 +124,40 @@ def attn_fwd_inner(
         # CAVEAT: Must update l_ij before applying dropout
         l_ij = tl.sum(p, 1)
         if ENABLE_DROPOUT:
-            philox_offset = batch_philox_offset + start_m * BLOCK_M * max_seqlen_k + start_n
-            keep = dropout_mask(philox_seed, philox_offset, dropout_p, BLOCK_M, BLOCK_N, max_seqlen_k)
+            philox_offset = (
+                batch_philox_offset + start_m * BLOCK_M * max_seqlen_k + start_n
+            )
+            keep = dropout_mask(
+                philox_seed, philox_offset, dropout_p, BLOCK_M, BLOCK_N, max_seqlen_k
+            )
             if RETURN_ENCODED_SOFTMAX:
-                mstore2d(tl.where(keep, p, -p).to(q.type.element_ty),
-                         BLOCK_M,
-                         BLOCK_N,
-                         o_base=encoded_sm_base,
-                         o_start_row=start_m * BLOCK_M,
-                         o_start_col=start_n,
-                         o_rows=seqlen_q,
-                         o_cols=seqlen_k,
-                         stride_row=max_seqlen_k,
-                         stride_col=1)
+                mstore2d(
+                    tl.where(keep, p, -p).to(q.type.element_ty),
+                    BLOCK_M,
+                    BLOCK_N,
+                    o_base=encoded_sm_base,
+                    o_start_row=start_m * BLOCK_M,
+                    o_start_col=start_n,
+                    o_rows=seqlen_q,
+                    o_cols=seqlen_k,
+                    stride_row=max_seqlen_k,
+                    stride_col=1,
+                )
                 # tl.store(encoded_sm_ptrs, tl.where(keep, p, -p).to(q.type.element_ty))
             p = tl.where(keep, p, 0.0)
         elif RETURN_ENCODED_SOFTMAX:
-            mstore2d(p.to(q.type.element_ty),
-                     BLOCK_M,
-                     BLOCK_N,
-                     o_base=encoded_sm_base,
-                     o_start_row=start_m * BLOCK_M,
-                     o_start_col=start_n,
-                     o_rows=seqlen_q,
-                     o_cols=seqlen_k,
-                     stride_row=max_seqlen_k,
-                     stride_col=1)
+            mstore2d(
+                p.to(q.type.element_ty),
+                BLOCK_M,
+                BLOCK_N,
+                o_base=encoded_sm_base,
+                o_start_row=start_m * BLOCK_M,
+                o_start_col=start_n,
+                o_rows=seqlen_q,
+                o_cols=seqlen_k,
+                stride_row=max_seqlen_k,
+                stride_col=1,
+            )
             # tl.store(encoded_sm_ptrs, p.to(q.type.element_ty))
         # -- update output accumulator --
         alpha = tl.math.exp2(m_i - m_ij)

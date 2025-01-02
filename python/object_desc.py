@@ -2,47 +2,53 @@
 # Copyright © 2023-2024 Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 SOURCE_PATH = Path(__file__).resolve()
 
+
 class ObjectFileDescription(object):
     SIGNATURE_TO_C = {
-        'fp32'  : 'float',
-        '*fp32' : 'const float*',
-        '*fp16' : 'const __fp16*',
-        '*bf16' : 'const __bf16*',
-        'i32'   : 'int32_t',
-        'i64'   : 'int64_t',
-        'u32'   : 'uint32_t',
-        'u64'   : 'uint64_t',
+        "fp32": "float",
+        "*fp32": "const float*",
+        "*fp16": "const __fp16*",
+        "*bf16": "const __bf16*",
+        "i32": "int32_t",
+        "i64": "int64_t",
+        "u32": "uint32_t",
+        "u64": "uint64_t",
     }
+
     def is_tensor_type(t):
-        return t.startswith('*')
+        return t.startswith("*")
 
     DEFAULT_NUM_WARPS = 4
     DEFAULT_NUM_STAGES = 4
     DEFAULT_WAVES_PER_EU = 0
 
-    def __init__(self,
-                 triton_kernel_desc : 'KernelDescription',
-                 signature: 'KernelSignature',
-                 hsaco_kernel_path : Path,
-                 sancheck_fileexists = False):
+    def __init__(
+        self,
+        triton_kernel_desc: "KernelDescription",
+        signature: "KernelSignature",
+        hsaco_kernel_path: Path,
+        sancheck_fileexists=False,
+    ):
         self._triton_kernel_desc = triton_kernel_desc
         self.KERNEL_FAMILY = self._triton_kernel_desc.KERNEL_FAMILY
         self.SHIM_KERNEL_NAME = self._triton_kernel_desc.SHIM_KERNEL_NAME
         self._signature = signature
         self._hsaco_kernel_path = Path(hsaco_kernel_path)
         # self._hsaco_metatdata_path = Path() if triton_metadata_path is None else self._triton_file_path.with_suffix('.json')
-        self._hsaco_metatdata_path = self._hsaco_kernel_path.with_suffix('.json')
+        self._hsaco_metatdata_path = self._hsaco_kernel_path.with_suffix(".json")
         if self.compiled_files_exist:
-            with self._hsaco_metatdata_path.open('r') as f:
+            with self._hsaco_metatdata_path.open("r") as f:
                 self._metadata = json.load(f)
         else:
             if sancheck_fileexists:
-                assert False, f'GPU Kernel {self._hsaco_kernel_path} failed to compile. This is a bug when -DAOTRITON_BUILD_FOR_TUNING=OFF'
+                assert (
+                    False
+                ), f"GPU Kernel {self._hsaco_kernel_path} failed to compile. This is a bug when -DAOTRITON_BUILD_FOR_TUNING=OFF"
             self._metadata = {}
 
     @property
@@ -54,7 +60,7 @@ class ObjectFileDescription(object):
         if self.compiled_files_exist:
             with open(self._hsaco_metatdata_path) as f:
                 j = json.load(f)
-            return j['compile_status'] == 'Complete'
+            return j["compile_status"] == "Complete"
         return False
 
     @property
@@ -71,7 +77,9 @@ class ObjectFileDescription(object):
 
     @property
     def c_identifier_signature(self):
-        return self._signature.compact_signature.replace('^', 'Ptr').replace('@', 'Align')
+        return self._signature.compact_signature.replace("^", "Ptr").replace(
+            "@", "Align"
+        )
 
     @property
     def functional_signature(self):
@@ -83,7 +91,7 @@ class ObjectFileDescription(object):
         for sel in self._signature._perf_selections:
             v = sel.argument_value
             for a in sel.argument_names:
-                lets.append(f'.{a} = {v}')
+                lets.append(f".{a} = {v}")
         return lets
 
     @property
@@ -97,9 +105,11 @@ class ObjectFileDescription(object):
     @property
     def binary_entrance(self):
         if self.compile_successful:
-            assert self._metadata, f'Did not load the metadata from {self._hsaco_metatdata_path}'
-            return self._metadata['name']
-        return ''
+            assert (
+                self._metadata
+            ), f"Did not load the metadata from {self._hsaco_metatdata_path}"
+            return self._metadata["name"]
+        return ""
 
     @property
     def obj(self):
@@ -108,32 +118,34 @@ class ObjectFileDescription(object):
     @property
     def signature(self):
         # print(f'{self._signature.triton_api_signature_list=}')
-        return ', '.join(self._signature.triton_api_signature_list)
+        return ", ".join(self._signature.triton_api_signature_list)
 
     @property
     def shared_memory_size(self):
         if self.compile_successful:
-            return self._metadata['shared']
+            return self._metadata["shared"]
         return -1
 
     @property
     def num_warps(self):
-        num_warps = self._metadata.get('num_warps', self.DEFAULT_NUM_WARPS)
-        return self._signature._compiler_options.get('num_warps', num_warps)
+        num_warps = self._metadata.get("num_warps", self.DEFAULT_NUM_WARPS)
+        return self._signature._compiler_options.get("num_warps", num_warps)
 
     @property
     def num_stages(self):
-        num_stages = self._metadata.get('num_stages', self.DEFAULT_NUM_STAGES)
-        return self._signature._compiler_options.get('num_stages', num_stages)
+        num_stages = self._metadata.get("num_stages", self.DEFAULT_NUM_STAGES)
+        return self._signature._compiler_options.get("num_stages", num_stages)
 
     @property
     def waves_per_eu(self):
-        return self._signature._compiler_options.get('waves_per_eu', self.DEFAULT_WAVES_PER_EU)
+        return self._signature._compiler_options.get(
+            "waves_per_eu", self.DEFAULT_WAVES_PER_EU
+        )
 
     @property
     def warp_size(self):
         if self.compile_successful:
-            return self._metadata['warp_size']
+            return self._metadata["warp_size"]
         return 0
 
     @property
@@ -141,35 +153,39 @@ class ObjectFileDescription(object):
         return self._signature.target_gpu
 
     def generate_shim_header_member_function(self) -> str:
-        TEMPLATE = ' hipError_t operator()(dim3 grid, {shim_arguments}, hipStream_t stream);\n'
+        TEMPLATE = (
+            " hipError_t operator()(dim3 grid, {shim_arguments}, hipStream_t stream);\n"
+        )
         shim_arguments, _ = self.compute_c_argument()
         fmt = {
-                'shim_arguments': shim_arguments,
+            "shim_arguments": shim_arguments,
         }
         return TEMPLATE.format_map(fmt)
 
     def generate_shim_header_closing_struct_define(self) -> str:
-        return '};\n\n'
+        return "};\n\n"
 
     def generate_shim_header_extern_template(self) -> str:
-        TEMPLATE = 'template struct {shim_kernel_name}<{shim_kernel_specialization}>;'
-        template_specialization = self.compute_struct_template_specialization(align1=len(self.SHIM_KERNEL_NAME)+17)
+        TEMPLATE = "template struct {shim_kernel_name}<{shim_kernel_specialization}>;"
+        template_specialization = self.compute_struct_template_specialization(
+            align1=len(self.SHIM_KERNEL_NAME) + 17
+        )
         fmt = {
-            'shim_kernel_name': self.SHIM_KERNEL_NAME,
-            'shim_kernel_specialization': template_specialization,
+            "shim_kernel_name": self.SHIM_KERNEL_NAME,
+            "shim_kernel_specialization": template_specialization,
         }
         return TEMPLATE.format_map(fmt)
 
     def compute_c_argument(self, align1=23, align2=30):
         arguments = self.get_c_arguments()
-        typed_arguments = [f'{self.get_ctype(a)[1]} {a}' for a in arguments]
-        casted_arguments = [f'static_cast<void*>(&{a})' for a in arguments]
-        ALIGN1 = ',\n' + ' ' * align1
-        ALIGN2 = ',\n' + ' ' * align2
+        typed_arguments = [f"{self.get_ctype(a)[1]} {a}" for a in arguments]
+        casted_arguments = [f"static_cast<void*>(&{a})" for a in arguments]
+        ALIGN1 = ",\n" + " " * align1
+        ALIGN2 = ",\n" + " " * align2
         return ALIGN1.join(typed_arguments), ALIGN2.join(casted_arguments)
 
     def sanitize_type(self, t):
-        colon = t.rfind(':')
+        colon = t.rfind(":")
         colon = None if colon < 0 else colon
         return t[:colon]
 
@@ -181,11 +197,11 @@ class ObjectFileDescription(object):
                 if not_constant:
                     ctype = self.SIGNATURE_TO_C[stemv]
                 elif isinstance(v, bool):
-                    ctype = 'bool'
+                    ctype = "bool"
                 elif isinstance(v, int):
-                    ctype = 'int32_t'
+                    ctype = "int32_t"
                 elif isinstance(v, float):
-                    ctype = 'float'
+                    ctype = "float"
                 return not_constant, ctype
         assert False, f"cannot find {arg_name}"
 
@@ -193,7 +209,7 @@ class ObjectFileDescription(object):
         for k, v in self._argument_choices.items():
             if arg_name in k:
                 if isinstance(v, bool):
-                    return 'true' if v else 'false'
+                    return "true" if v else "false"
                 return v
         assert False, f"cannot find {arg_name}"
 
@@ -224,8 +240,8 @@ class ObjectFileDescription(object):
         constants = self._filter_arguments(request_constants=True)
         typed_constants = []
         for a in constants:
-            typed_constants.append(f'{self.get_ctype(a)[1]} {a}')
-        ALIGN1 = ',\n' + ' ' * align1
+            typed_constants.append(f"{self.get_ctype(a)[1]} {a}")
+        ALIGN1 = ",\n" + " " * align1
         return ALIGN1.join(typed_constants)
 
     def compute_struct_template_specialization(self, align1=13):
@@ -233,9 +249,9 @@ class ObjectFileDescription(object):
         constant_values_with_hint = []
         for a in constants:
             v = str(self.get_cvalue(a))
-            v += f' /* {a} */'
+            v += f" /* {a} */"
             constant_values_with_hint.append(v)
-        ALIGN1 = ',\n' + ' ' * align1
+        ALIGN1 = ",\n" + " " * align1
         return ALIGN1.join(constant_values_with_hint)
 
     """
@@ -272,4 +288,3 @@ class ObjectFileDescription(object):
         ALIGN2 = ';\n' + ' ' * align2
         return ALIGN1.join(typed_arguments), ALIGN2.join(template_constants)
     """
-

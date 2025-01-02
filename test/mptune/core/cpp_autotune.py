@@ -1,38 +1,44 @@
-from collections import namedtuple
-from aotriton_flash import hipError_t, CppTuneSpecialKernelIndex
 import json
-import sys
 import os
-import math
+from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Union, Optional
+
+from aotriton_flash import CppTuneSpecialKernelIndex, hipError_t
+
 from .datatypes import CPP_AUTOTUNE_MAX_KERNELS
 
-CPPTUNE_DEBUG_FEW_KERNELS = int(os.getenv('CPPTUNE_DEBUG_FEW_KERNELS', default=-1))
+CPPTUNE_DEBUG_FEW_KERNELS = int(os.getenv("CPPTUNE_DEBUG_FEW_KERNELS", default=-1))
 
-KernelOutput = namedtuple('KernelOutput', ['hip_status', 'output_tensors'])
+KernelOutput = namedtuple("KernelOutput", ["hip_status", "output_tensors"])
+
 
 @dataclass
 class AutotuneResult:
-    hip_status : hipError_t = hipError_t.hipErrorUnknown
-    kernel_index : int = -1
-    total_number_of_kernels : int = -1
-    ut_passed : bool = False
-    time : float = float('inf')
+    hip_status: hipError_t = hipError_t.hipErrorUnknown
+    kernel_index: int = -1
+    total_number_of_kernels: int = -1
+    ut_passed: bool = False
+    time: float = float("inf")
     # TODO: | requires python 3.10 (hopefully we can migrate to 3.10 when 3.9 reaches EOL)
-    adiffs : 'float | list[float] | None' = None
-    target_fudge_factors : 'float | list[float] | None' = None
-    psels : 'dict | None' = None
-    copts : 'dict | None' = None
+    adiffs: "float | list[float] | None" = None
+    target_fudge_factors: "float | list[float] | None" = None
+    psels: "dict | None" = None
+    copts: "dict | None" = None
 
-def do_bench(fn, atr : AutotuneResult,
-             *, warmup=25, rep=100,
-             grad_to_none=None,
-             quantiles=None,
-             fast_flush=True,
-             return_mode="mean",
-             validator=None) -> AutotuneResult:
+
+def do_bench(
+    fn,
+    atr: AutotuneResult,
+    *,
+    warmup=25,
+    rep=100,
+    grad_to_none=None,
+    quantiles=None,
+    fast_flush=True,
+    return_mode="mean",
+    validator=None
+) -> AutotuneResult:
     """
     Benchmark the runtime of the provided function. By default, return the median runtime of :code:`fn` along with
     the 20-th and 80-th performance percentile.
@@ -81,9 +87,9 @@ def do_bench(fn, atr : AutotuneResult,
     # doesn't contain any input data before the run
     cache_size = 256 * 1024 * 1024
     if fast_flush:
-        cache = torch.empty(int(cache_size // 4), dtype=torch.int, device='cuda')
+        cache = torch.empty(int(cache_size // 4), dtype=torch.int, device="cuda")
     else:
-        cache = torch.empty(int(cache_size), dtype=torch.int8, device='cuda')
+        cache = torch.empty(int(cache_size), dtype=torch.int8, device="cuda")
 
     # Estimate the runtime of the function
     start_event = torch.cuda.Event(enable_timing=True)
@@ -120,7 +126,9 @@ def do_bench(fn, atr : AutotuneResult,
         end_event[i].record()
     # Record clocks
     torch.cuda.synchronize()
-    times = torch.tensor([s.elapsed_time(e) for s, e in zip(start_event, end_event)], dtype=torch.float)
+    times = torch.tensor(
+        [s.elapsed_time(e) for s, e in zip(start_event, end_event)], dtype=torch.float
+    )
     if quantiles is not None:
         ret = torch.quantile(times, torch.tensor(quantiles, dtype=torch.float)).tolist()
         if len(ret) == 1:
@@ -129,6 +137,7 @@ def do_bench(fn, atr : AutotuneResult,
         return atr
     atr.time = getattr(torch, return_mode)(times).item()
     return atr
+
 
 class CppTuneWapper(object):
     def __init__(self, factory, sub_accessor=None):
@@ -169,6 +178,7 @@ class CppTuneWapper(object):
     def capi_object(self):
         return self._extargs
 
+
 def cpp_autotune_sub_kernel_gen(extargs, kernel_func, validator, cur_kig):
     if cur_kig.kernel_index >= cur_kig.total_number_of_kernels:
         return
@@ -176,20 +186,24 @@ def cpp_autotune_sub_kernel_gen(extargs, kernel_func, validator, cur_kig):
     while True:
         # max(0, ...) is the defensive approach to prevent -1 slipping into C++ component
         extargs.force_kernel_index = max(0, cur_kig.kernel_index)
+
         def func(is_testing=False):
             return kernel_func(extargs, is_testing)
+
         # ut_passed, t, adiff, fudge_factors, hip_status = do_bench(func, validator=validator, quantiles=(0.5, 0.2, 0.8))
         atr = AutotuneResult()
         atr = do_bench(func, atr, validator=validator, quantiles=(0.5, 0.2, 0.8))
         # assert extargs.total_number_of_kernels > 0
-        '''
+        """
         Update kig
-        '''
+        """
         if extargs.total_number_of_kernels > 0:
             cur_kig.total_number_of_kernels = extargs.total_number_of_kernels
             # !!!!!!!!!!!!!!!!!!! DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!
             if CPPTUNE_DEBUG_FEW_KERNELS > 0:
-                cur_kig.total_number_of_kernels = min(CPPTUNE_DEBUG_FEW_KERNELS, extargs.total_number_of_kernels)
+                cur_kig.total_number_of_kernels = min(
+                    CPPTUNE_DEBUG_FEW_KERNELS, extargs.total_number_of_kernels
+                )
         cur_kig.last_adiff = atr.adiffs
         if atr.ut_passed:
             cur_kig.last_success_kernel = extargs.force_kernel_index
@@ -199,8 +213,10 @@ def cpp_autotune_sub_kernel_gen(extargs, kernel_func, validator, cur_kig):
                 cur_kig.noimage_kernels += 1
             else:
                 cur_kig.failed_kernels += 1
+
         def safeload(s):
             return json.loads(s) if s else None
+
         cur_kig.kernel_index = extargs.force_kernel_index
         atr.kernel_index = cur_kig.kernel_index
         atr.total_number_of_kernels = cur_kig.total_number_of_kernels
@@ -212,7 +228,8 @@ def cpp_autotune_sub_kernel_gen(extargs, kernel_func, validator, cur_kig):
             break
     # TODO: Report no conf works
 
-''' Use extargs to profile pre-compiled GPU kernels
+
+""" Use extargs to profile pre-compiled GPU kernels
 This is an generator of all tuning results, and yields all results rather than the best one.
 
 @param extarg_factory: factory to construct extargs for the API, can be class
@@ -233,35 +250,47 @@ This is an generator of all tuning results, and yields all results rather than t
 @param validator: validator of each sub kernel
 @param kernel_index_progress_dict: dict[subkernel_name, KernelIndexProress].
     Use to track the progress and resume the task if interrupted (e.g. by GPU Hangs)
-'''
-def cpp_autotune_gen(extarg_factory, sub_extarg_accessor,
-                     subkernel_names, kernel_func,
-                     validators, *, kernel_index_progress_dict):
+"""
+
+
+def cpp_autotune_gen(
+    extarg_factory,
+    sub_extarg_accessor,
+    subkernel_names,
+    kernel_func,
+    validators,
+    *,
+    kernel_index_progress_dict
+):
     extargs_with_subs = CppTuneWapper(extarg_factory, sub_extarg_accessor)
     num_of_subkernels = len(subkernel_names)
+
     def reset_kernel_index_to_skip():
         for i in range(num_of_subkernels):
-            sub_extarg_accessor(extargs_with_subs.capi_object, i).force_kernel_index = CppTuneSpecialKernelIndex.kSkipGPUCall
-    all_ret = []
+            sub_extarg_accessor(
+                extargs_with_subs.capi_object, i
+            ).force_kernel_index = CppTuneSpecialKernelIndex.kSkipGPUCall
+
     # kig_dict = deepcopy(kernel_index_progress_dict)
     kig_dict = kernel_index_progress_dict  # Otherwise kernel progress are local to this function
-    for sub_index, cur_name, cur_validator in zip(range(num_of_subkernels), subkernel_names, validators):
+    for sub_index, cur_name, cur_validator in zip(
+        range(num_of_subkernels), subkernel_names, validators
+    ):
         # print(f'Tuning sub {cur_name}')
         reset_kernel_index_to_skip()
         extargs_with_subs.set_current_sub(sub_index)
         cur_kig = kig_dict[cur_name]
-        for ret in cpp_autotune_sub_kernel_gen(extargs_with_subs,
-                                               kernel_func,
-                                               cur_validator,
-                                               cur_kig):
+        for ret in cpp_autotune_sub_kernel_gen(
+            extargs_with_subs, kernel_func, cur_validator, cur_kig
+        ):
             yield cur_name, ret, deepcopy(kig_dict)
-        '''
+        """
         CAVEAT: Must run kernel_func at least once.
                 Otherwise this may happen:
                     1. Running fwd and bwd tuning;
                     2. Bwd kernel segfaulted;
                     3. Resume the tuning process after skipping the kernel;
                     4. The o tensor is empty/nan and the bwd output becomes garbage.
-        '''
+        """
         extargs_with_subs.force_kernel_index = cur_kig.last_success_kernel
         kernel_func(extargs_with_subs, is_testing=False)

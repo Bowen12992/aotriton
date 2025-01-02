@@ -2,52 +2,57 @@
 # Copyright © 2024 Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
-from ..core import MonadAction, MonadMessage, Monad, MonadService
 from abc import abstractmethod
+
+from ..core import Monad, MonadAction, MonadMessage, MonadService
+
 
 class ProfilerEarlyExit(Exception):
     def __init__(self, msg):
         super().__init__()
         self.msg = msg
 
-class TunerService(MonadService):
 
+class TunerService(MonadService):
     def init(self, init_object):
         gpu, total_shards = init_object
         self._gpu = gpu
-        self._gpu_device = f'cuda:{gpu}'
+        self._gpu_device = f"cuda:{gpu}"
         self._cached_ctx = None
         self._cached_params = None
         self._cached_tup = None
 
     def process(self, request):
         import torch
+
         if request.action == MonadAction.Exit:
             yield request
             return
-        self.print(f'Worker receive {request}')
+        self.print(f"Worker receive {request}")
         with torch.cuda.device(self._gpu):
             torch.manual_seed(20)
             item = 0
             gen = self.profile(request)
             try:
                 for kernel_name, perf_number, kig in gen:
-                    yield request.set_action(MonadAction.Pass) \
-                                 .forward(self.monad) \
-                                 .update_payload(profiled_kernel_name=kernel_name,
-                                                 perf_number=perf_number,
-                                                 kig_dict=kig)
+                    yield request.set_action(MonadAction.Pass).forward(
+                        self.monad
+                    ).update_payload(
+                        profiled_kernel_name=kernel_name,
+                        perf_number=perf_number,
+                        kig_dict=kig,
+                    )
                     # print(f'Worker yield {kig=}')
-                    self.print(f'Worker yield {item=}')
+                    self.print(f"Worker yield {item=}")
                     item += 1
             except RuntimeError as e:
-                self.print(f'{self.monad.identifier} RuntimeError {e}')
-            except StopIteration as e:
-                self.print(f'{self.monad.identifier}')
+                self.print(f"{self.monad.identifier} RuntimeError {e}")
+            except StopIteration:
+                self.print(f"{self.monad.identifier}")
             except ProfilerEarlyExit as e:
                 assert e.msg.action != MonadAction.Pass
                 yield e.msg
-        self.print(f'Worker complete {request}')
+        self.print(f"Worker complete {request}")
 
     def cleanup(self):
         pass

@@ -39,7 +39,7 @@ if(NOT AOTRITON_NOIMAGE_MODE)
     -E env VIRTUAL_ENV=${VENV_DIR}
     AOTRITON_ENABLE_FP32=${AOTRITON_ENABLE_FP32}
     "${VENV_DIR}/bin/python" -m python.generate_compile
-    --target_gpus ${TARGET_GPUS} 
+    --target_gpus ${TARGET_GPUS}
     --build_dir "${AOTRITON_V2_BUILD_DIR}"
     --bare_mode ${GENERATE_OPTION}
     --generate_cluster_info
@@ -55,7 +55,7 @@ if(NOT AOTRITON_NOIMAGE_MODE)
   message("Bare.compile ${NUM_HSACO_RULES} rules read")
 
   ## Use Bare.compile file to generate custom rules
-  file(WRITE "${AOTRITON_HSACO_RECORD}" "") 
+  file(WRITE "${AOTRITON_HSACO_RECORD}" "")
   set(I "0")  # Progress
   foreach(RULE IN LISTS HSACO_RULES)
     # message("${RULE}")
@@ -140,7 +140,7 @@ execute_process(
 )
 file(STRINGS "${AOTRITON_V2_BUILD_DIR}/Bare.shim" SHIM_CC_FILES)
 
-add_custom_target(aotriton_v2_gen_shim 
+add_custom_target(aotriton_v2_gen_shim
   COMMAND ${CMAKE_COMMAND}
   -E env VIRTUAL_ENV=${VENV_DIR}
   AOTRITON_ENABLE_FP32=${AOTRITON_ENABLE_FP32}
