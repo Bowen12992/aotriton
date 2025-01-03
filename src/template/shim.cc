@@ -7,15 +7,13 @@
 
 namespace AOTRITON_NS::v2::[[kernel_family_name]] {
 
-int64_t [[param_class_name]]::godel_number() const
-{
+int64_t [[param_class_name]]::godel_number() const {
     int64_t sum = 0;
 [[godel_number_body]]
     return sum;
 }
 
-cudaError_t
-[[context_class_name]]::lookup_optimal([[param_class_name]]& params, GpuArch arch) {
+cudaError_t [[context_class_name]]::lookup_optimal([[param_class_name]]& params, GpuArch arch) {
     int64_t arch_number = get_arch_number(arch);
     if (arch_number < 0) {
         return cudaErrorNoKernelImageForDevice;
@@ -28,8 +26,7 @@ cudaError_t
     return cudaSuccess;
 }
 
-cudaError_t
-[[context_class_name]]::launch(const [[param_class_name]]& params, cudaStream_t stream) {
+cudaError_t [[context_class_name]]::launch(const [[param_class_name]]& params, cudaStream_t stream) {
     auto arch = getArchFromStream(stream);
     CUdeviceptr global_scratch = 0;
     [[put_kernel_arguments_on_stack]];
@@ -40,8 +37,7 @@ cudaError_t
     return params.selected_kernel->invoke("[[triton_kernel_name]]", grid, args, stream);
 }
 
-int64_t
-[[context_class_name]]::get_arch_number(GpuArch arch) {
+int64_t [[context_class_name]]::get_arch_number(GpuArch arch) {
     [[get_arch_number_body]];
     return -1;
 }
@@ -51,4 +47,4 @@ int64_t
 [[kernel_table_entries]]
 };
 
-}
+} // namespace AOTRITON_NS::v2::[[kernel_family_name]]

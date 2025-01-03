@@ -34,14 +34,14 @@ struct [[param_class_name]] {
 };
 
 class [[context_class_name]] {
-public:
+ public:
     std::function<dim3(const [[param_class_name]]&)> grid_calculator;
 
     cudaError_t lookup_optimal([[param_class_name]]& params, GpuArch arch);
     cudaError_t launch(const [[param_class_name]]& params, cudaStream_t stream);
     static int64_t get_arch_number(GpuArch arch);
 
-private:
+ private:
     GpuArch kernel_arch = GPU_ARCH_UNKNOWN;
 
     using AutoTuneTableEntry = std::function<void([[param_class_name]]& params)>;
@@ -54,7 +54,7 @@ using AOTRITON_NS::v2::[[kernel_family_name]]::[[param_class_name]];
 
 [[kernel_table_entry_declares]]
 
-}
+} // namespace autotune
 
 
-}
+} // namespace AOTRITON_NS::v2::[[kernel_family_name]]

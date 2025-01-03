@@ -31,14 +31,17 @@ else()
   set(AOTRITON_ENABLE_FP32 0)
 endif()
 
-# Compile HSACO Kernels
+# Compile Kernels
+#  - NVIDIA : cubin
+#  - AMD    : hsaco
+# execute_process(COMMAND /bin/bash -c "read -p 'press any key to continue...'")
 if(NOT AOTRITON_NOIMAGE_MODE)
   ## Generate Bare.compile file
   execute_process(
     COMMAND ${CMAKE_COMMAND}
     -E env VIRTUAL_ENV=${VENV_DIR}
     AOTRITON_ENABLE_FP32=${AOTRITON_ENABLE_FP32}
-    "${VENV_DIR}/bin/python" -m python.generate_compile
+    "${Python3_EXECUTABLE}" -m python.generate_compile
     --target_gpus ${TARGET_GPUS}
     --build_dir "${AOTRITON_V2_BUILD_DIR}"
     --bare_mode ${GENERATE_OPTION}
@@ -70,7 +73,7 @@ if(NOT AOTRITON_NOIMAGE_MODE)
     add_custom_command(OUTPUT "${HSACO}"
       COMMAND ${CMAKE_COMMAND} -E env VIRTUAL_ENV=${VENV_DIR}
       TRITON_CACHE_DIR=${CMAKE_BINARY_DIR}/triton-cache
-      "${VENV_DIR}/bin/python"
+      "${Python3_EXECUTABLE}"
       "${AOTRITON_COMPILER}"
       "${SRC}"
       "--kernel_name" "${KNAME}"
@@ -110,7 +113,7 @@ if(NOT AOTRITON_NOIMAGE_MODE)
     # message(STATUS "Add AKS2 ${AKS2}")
     add_custom_command(OUTPUT "${AKS2}"
       COMMAND ${CMAKE_COMMAND} -E env VIRTUAL_ENV=${VENV_DIR}
-      "${VENV_DIR}/bin/python"
+      "${Python3_EXECUTABLE}"
       -m python.aks2
       -o "${AKS2}"
       --
@@ -133,7 +136,7 @@ execute_process(
   COMMAND ${CMAKE_COMMAND}
   -E env VIRTUAL_ENV=${VENV_DIR}
   AOTRITON_ENABLE_FP32=${AOTRITON_ENABLE_FP32}
-  "${VENV_DIR}/bin/python" -m python.generate_shim --target_gpus ${TARGET_GPUS} --build_dir ${AOTRITON_V2_BUILD_DIR} --bare_mode ${GENERATE_OPTION}
+  "${Python3_EXECUTABLE}" -m python.generate_shim --target_gpus ${TARGET_GPUS} --build_dir ${AOTRITON_V2_BUILD_DIR} --bare_mode ${GENERATE_OPTION}
   COMMAND_ECHO STDOUT
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/.."
   COMMAND_ERROR_IS_FATAL ANY
@@ -144,7 +147,7 @@ add_custom_target(aotriton_v2_gen_shim
   COMMAND ${CMAKE_COMMAND}
   -E env VIRTUAL_ENV=${VENV_DIR}
   AOTRITON_ENABLE_FP32=${AOTRITON_ENABLE_FP32}
-  "${VENV_DIR}/bin/python" -m python.generate_shim --target_gpus ${TARGET_GPUS} --build_dir ${AOTRITON_V2_BUILD_DIR} ${AOTRITON_SHIM_FLAGS} ${GENERATE_OPTION}
+  "${Python3_EXECUTABLE}" -m python.generate_shim --target_gpus ${TARGET_GPUS} --build_dir ${AOTRITON_V2_BUILD_DIR} ${AOTRITON_SHIM_FLAGS} ${GENERATE_OPTION}
   BYPRODUCTS ${SHIM_CC_FILES}  # Essential, otherwise add_library complains
   COMMAND_EXPAND_LISTS
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/.."
