@@ -9,7 +9,7 @@
 #     fi
 # done
 
-cmake .. -DCMAKE_INSTALL_PREFIX=installed_dir/aotriton -G Ninja &&
+cmake .. -DCMAKE_INSTALL_PREFIX=installed_dir/aotriton -DAOTRITON_BUILD_FOR_TUNING=0 -G Ninja &&
 
 ninja install -j128 &&
 

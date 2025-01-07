@@ -4,4 +4,5 @@
 from .flash import kernels as flash_kernels
 from .pointwise import kernels as pointwise_kernels
 
-kernels = pointwise_kernels + flash_kernels
+kernels = pointwise_kernels
+kernels += flash_kernels
